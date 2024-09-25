@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="description" content="" />
+	<meta name="author" content="" />
+	<title>OptimizeScalableHistory</title>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+ 	<script type="text/javascript" src="https://code.jquery.com/ui/1.14.0/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/color/jquery.color-3.0.0.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js" ></script> 
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.min.js" integrity="sha384-0pUGZvbkm6XF6gxjEnlmuGrJXVbNuzT9qBBavbLwCsOGabYfZo0T0to5eqruptLy" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <link type="text/css" rel="stylesheet" href="https://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css"/>
+    <link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css"/>
+	<link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css" />
+	<link type="text/css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <script>
+        var eventSource;
+        var currentResponse;
+        window.addEventListener("load", function () {
+    
+                // Connect to the server
+                eventSource = new EventSource("/dashboard/weather/info");
+    
+                // Receive messages
+                eventSource.onmessage = function (event) {
+                    currentResponse = event.data;
+                    emergencyJsonParser(event.data);
+                    applicationJsonParser(event.data);
+                    weatherJsonParser(event.data);
+                };
+                eventSource.onerror = function (e) {
+                    console.log("EventSource failed: " + e);
+                };
+            },
+            false);
+        function getTargetJson(jsonName, strJson){
+            var targetJsonObject = JSON.parse(strJson);
+            return targetJsonObject[jsonName];
+        }
+        function emergencyJsonParser(strJson){
+            var emergencyJson = JSON.parse(getTargetJson("emergencyJson",strJson));
+            var emergencyArray = emergencyJson['body'];
+            if(emergencyArray === null){
+                return;
+            }
+            emergencyArray.sort((a, b) => new Date(b.CRT_DT) - new Date(a.CRT_DT));
+            var emergencyTbody = document.querySelector('#emergencyTbody');
+            var trElement = "";
+            for(var i = 0; i < emergencyArray.length; i++) {
+                var targetJson = emergencyArray[i];
+                trElement += "<tr>";
+                trElement   += "<td>" + targetJson.CRT_DT + "</td>";
+                trElement   += "<td>" + targetJson.RCPTN_RGN_NM + "</td>";
+                trElement   += "<td>" + targetJson.MSG_CN + "</td>";
+                trElement   += "<td>" + targetJson.DST_SE_NM + "</td>";
+                trElement   += "<td>" + targetJson.EMRG_STEP_NM + "</td>"; 
+                trElement+= "</tr>";
+            }
+            emergencyTbody.innerHTML = trElement;
+        }
+        function weatherJsonParser(strJson){
+            var weatherTbody = document.querySelector('#weatherTbody');
+            var trElement = "";
+            var weather1Json = JSON.parse(getTargetJson("weatherJson1",strJson));
+            /**
+             * <th>날씨</th>
+                                <th>온도</th>
+                                <th>구름</th>
+                                <th>습도</th>
+                                <th>바람</th>
+                                <th>일출</th>
+                                <th>일몰</th>
+                                */
+            trElement += "<tr>";
+            trElement   += "<td>" + "창원" + "</td>";
+            trElement   += "<td>" + weather1Json.weather[0].main + "</td>";
+            trElement   += "<td>" + weather1Json.main.temp + "</td>";
+            trElement   += "<td>" + weather1Json.clouds.all + "%</td>";
+            trElement   += "<td>" + weather1Json.main.humidity + "m/s</td>";
+            trElement   += "<td>" + weather1Json.wind.speed + "m/s</td>";
+            trElement   += "<td>" + weather1Json.sys.sunrise + "</td>"; 
+            trElement   += "<td>" + weather1Json.sys.sunset + "</td>"; 
+            trElement+= "</tr>";
+            var weather2Json = JSON.parse(getTargetJson("weatherJson2",strJson));
+            trElement += "<tr>";
+            trElement   += "<td>" + "수원" + "</td>";
+            trElement   += "<td>" + weather2Json.weather[0].main + "</td>";
+            trElement   += "<td>" + weather2Json.main.temp + "</td>";
+            trElement   += "<td>" + weather2Json.clouds.all + "%</td>";
+            trElement   += "<td>" + weather2Json.main.humidity + "m/s</td>";
+            trElement   += "<td>" + weather2Json.wind.speed + "m/s</td>";
+            trElement   += "<td>" + weather2Json.sys.sunrise + "</td>"; 
+            trElement   += "<td>" + weather2Json.sys.sunset + "</td>"; 
+            trElement+= "</tr>";
+            weatherTbody.innerHTML = trElement;
+        }
+        
+        function applicationJsonParser(strJson){
+            var applicationJson = JSON.parse(getTargetJson("applicationJson",strJson));
+            document.querySelector('#currentTime').innerHTML = applicationJson.currentTime;
+            var applicationTbody = document.querySelector('#applicationTbody');
+            var trElement = "";
+            trElement += "<tr>";
+            trElement   += "<td>" + applicationJson.systemArchitecture + "</td>";
+            trElement   += "<td>" + applicationJson.systemName + "</td>";
+            trElement   += "<td>" + applicationJson.systemLoadAverage + "%</td>";
+            trElement   += "<td>" + applicationJson.memory + "</td>";
+            trElement   += "<td>" + applicationJson.useMemory + "</td>"; 
+            trElement   += "<td>" + applicationJson.freeMemory + "</td>"; 
+            trElement+= "</tr>";
+            applicationTbody.innerHTML = trElement;
+        }
+    </script>
+</head>
+
+<body>
+	<section class="conA">
+		<div class="container">
+            <figure class="text-center">
+                <blockquote class="blockquote">
+                  <p>안전 관리 담당자가<br>
+                    연속적으로 봐야할<br>
+                    주요 발생 내용들</p>
+                </blockquote>
+                <figcaption class="blockquote-footer">
+                  <cite title="Source Title" id="currentTime"></cite> 기준정보
+                </figcaption>
+              </figure>
+		</div>
+        <div class="container">
+            <div class="row text-end">
+                <h4>
+                    <small class="text-muted">실시간 기상정보</small>
+                </h4>
+            </div>
+            <div class="row">
+                <div class="col-lg-12 mt-5 mb-5">
+                    <table id="weatherTable" class="table table-bordered" style="width: 100%">
+                        <colgroup>
+                            <col style="width:12%">
+                            <col style="width:12%">
+                            <col style="width:12%">
+                            <col style="width:12%">
+                            <col style="width:12%">
+                            <col style="width:12%">
+                            <col style="width:12%">
+                            <col style="width:12%">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>지역</th>
+                                <th>날씨</th>
+                                <th>온도</th>
+                                <th>구름</th>
+                                <th>습도</th>
+                                <th>바람</th>
+                                <th>일출</th>
+                                <th>일몰</th>
+                            </tr>
+                        </thead>
+                        <tbody id="weatherTbody">
+                            <td>준비중</td>
+                            <td>준비중</td>
+                            <td>준비중</td>
+                            <td>준비중</td>
+                            <td>준비중</td>
+                            <td>준비중</td>
+                            <td>준비중</td>
+                            <td>준비중</td>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            <div class="row text-end">
+                <h4>
+                    <small class="text-muted">실시간 긴급재난문자</small>
+                </h4>
+            </div>
+            <div class="row">
+                <div class="col-lg-12 mt-5 mb-5">
+                    <table id="emergencyTable" class="table table-bordered" style="width: 100%">
+                        <colgroup>
+                            <col style="width:8%">
+                            <col style="width:20%">
+                            <col style="width:56%">
+                            <col style="width:8%">
+                            <col style="width:8%">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>일시</th>
+                                <th>지역</th>
+                                <th>내용</th>
+                                <th>분류</th>
+                                <th>상세</th>
+                            </tr>
+                        </thead>
+                        <tbody id="emergencyTbody">
+                            <tr>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            <div class="row text-end">
+                <h4>
+                    <small class="text-muted">서버정보</small>
+                </h4>
+            </div>
+            <div class="row"></div>
+                <div class="col-lg-12 mt-5 mb-5">
+                    <table id="emergencyTable" class="table table-bordered" style="width: 100%">
+                        <colgroup>
+                            <col style="width:15%">
+                            <col style="width:15%">
+                            <col style="width:15%">
+                            <col style="width:15%">
+                            <col style="width:15%">
+                            <col style="width:15%">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>아키텍쳐</th>
+                                <th>시스템명칭</th>
+                                <th>시스템부하</th>
+                                <th>총메모리</th>
+                                <th>사용메모리</th>
+                                <th>잔여메모리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="applicationTbody">
+                            <tr>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+		</div>
+	</section>
+</body>
+
+</html>
