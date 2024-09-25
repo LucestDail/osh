@@ -79,23 +79,23 @@
             trElement += "<tr>";
             trElement   += "<td>" + "창원" + "</td>";
             trElement   += "<td>" + weather1Json.weather[0].main + "</td>";
-            trElement   += "<td>" + weather1Json.main.temp + "</td>";
+            trElement   += "<td>" + convertF(weather1Json.main.temp) + "℃</td>";
             trElement   += "<td>" + weather1Json.clouds.all + "%</td>";
             trElement   += "<td>" + weather1Json.main.humidity + "m/s</td>";
             trElement   += "<td>" + weather1Json.wind.speed + "m/s</td>";
-            trElement   += "<td>" + weather1Json.sys.sunrise + "</td>"; 
-            trElement   += "<td>" + weather1Json.sys.sunset + "</td>"; 
+            trElement   += "<td>" + convertDate(weather1Json.sys.sunrise) + "</td>"; 
+            trElement   += "<td>" + convertDate(weather1Json.sys.sunset) + "</td>"; 
             trElement+= "</tr>";
             var weather2Json = JSON.parse(getTargetJson("weatherJson2",strJson));
             trElement += "<tr>";
             trElement   += "<td>" + "수원" + "</td>";
             trElement   += "<td>" + weather2Json.weather[0].main + "</td>";
-            trElement   += "<td>" + weather2Json.main.temp + "</td>";
+            trElement   += "<td>" + convertF(weather2Json.main.temp) + "℃</td>";
             trElement   += "<td>" + weather2Json.clouds.all + "%</td>";
             trElement   += "<td>" + weather2Json.main.humidity + "m/s</td>";
             trElement   += "<td>" + weather2Json.wind.speed + "m/s</td>";
-            trElement   += "<td>" + weather2Json.sys.sunrise + "</td>"; 
-            trElement   += "<td>" + weather2Json.sys.sunset + "</td>"; 
+            trElement   += "<td>" + convertDate(weather2Json.sys.sunrise) + "</td>"; 
+            trElement   += "<td>" + convertDate(weather2Json.sys.sunset) + "</td>"; 
             trElement+= "</tr>";
             weatherTbody.innerHTML = trElement;
         }
@@ -114,6 +114,17 @@
             trElement   += "<td>" + applicationJson.freeMemory + "</td>"; 
             trElement+= "</tr>";
             applicationTbody.innerHTML = trElement;
+        }
+
+        function convertF(fahrenheit){
+            return Math.ceil(fahrenheit - 273.15);
+        }
+
+        function convertDate(dateValue){
+            var utcSeconds = 1234567890;
+            var myDate = new Date(0); 
+            myDate.setUTCSeconds(dateValue);
+            return myDate.getFullYear() + '-' +('0' + (myDate.getMonth()+1)).slice(-2)+ '-' +  ('0' + myDate.getDate()).slice(-2) + ' '+myDate.getHours()+ ':'+('0' + (myDate.getMinutes())).slice(-2);
         }
     </script>
 </head>
