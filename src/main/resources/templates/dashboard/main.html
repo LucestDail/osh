@@ -32,6 +32,7 @@
                     emergencyJsonParser(event.data);
                     applicationJsonParser(event.data);
                     weatherJsonParser(event.data);
+                    trafficJsonParser(event.data);
                 };
                 eventSource.onerror = function (e) {
                     console.log("EventSource failed: " + e);
@@ -41,6 +42,29 @@
         function getTargetJson(jsonName, strJson){
             var targetJsonObject = JSON.parse(strJson);
             return targetJsonObject[jsonName];
+        }
+        function trafficJsonParser(strJson){
+            var trafficJson = JSON.parse(getTargetJson("trafficJson",strJson));
+            var trafficArray = trafficJson['body']['items'];
+            if(trafficArray === null){
+                return;
+            }
+            trafficArray.sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+            var trafficTbody = document.querySelector('#trafficTbody');
+            var trElement = "";
+            var trafficLength = trafficArray.length > 10 ? 10 : trafficArray.length;
+            for(var i = 0; i < trafficLength; i++) {
+                var targetJson = trafficArray[i];
+                trElement += "<tr>";
+                trElement   += "<td>" + strToDate(targetJson.startDate) + "</td>";
+                trElement   += "<td>" + targetJson.roadName + "</td>";
+                trElement   += "<td>" + targetJson.roadDrcType + "</td>";
+                trElement   += "<td>" + targetJson.message + "</td>";
+                trElement   += "<td>" + targetJson.eventType + "</td>";
+                trElement   += "<td>" + targetJson.eventDetailType + "</td>"; 
+                trElement+= "</tr>";
+            }
+            trafficTbody.innerHTML = trElement;
         }
         function emergencyJsonParser(strJson){
             var emergencyJson = JSON.parse(getTargetJson("emergencyJson",strJson));
@@ -121,10 +145,14 @@
         }
 
         function convertDate(dateValue){
-            var utcSeconds = 1234567890;
             var myDate = new Date(0); 
             myDate.setUTCSeconds(dateValue);
             return myDate.getFullYear() + '-' +('0' + (myDate.getMonth()+1)).slice(-2)+ '-' +  ('0' + myDate.getDate()).slice(-2) + ' '+myDate.getHours()+ ':'+('0' + (myDate.getMinutes())).slice(-2);
+        }
+
+        function strToDate(strDate){
+            var dt = strDate.replace(/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)$/, '$1/$2/$3 $4:$5:$6');
+            return dt;
         }
     </script>
 </head>
@@ -215,6 +243,47 @@
                         </thead>
                         <tbody id="emergencyTbody">
                             <tr>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                                <td>준비중</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="container">
+            <div class="row text-end">
+                <h4>
+                    <small class="text-muted">실시간 교통돌발상황</small>
+                </h4>
+            </div>
+            <div class="row">
+                <div class="col-lg-12 mt-5 mb-5">
+                    <table id="trafficTable" class="table table-bordered" style="width: 100%">
+                        <colgroup>
+                            <col style="width:8%">
+                            <col style="width:12%">
+                            <col style="width:8%">
+                            <col style="width:52%">
+                            <col style="width:8%">
+                            <col style="width:12%">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>일시</th>
+                                <th>도로명</th>
+                                <th>도로위치</th>
+                                <th>내용</th>
+                                <th>분류</th>
+                                <th>상세</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trafficTbody">
+                            <tr>
+                                <td>준비중</td>
                                 <td>준비중</td>
                                 <td>준비중</td>
                                 <td>준비중</td>

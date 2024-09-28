@@ -1,5 +1,9 @@
 package com.project.osh.controller;
 
+import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.util.Date;
+
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RestController;
@@ -9,12 +13,27 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @CrossOrigin
-@RequestMapping("/center")
+@RequestMapping
 public class MainController {
+
+    private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
+	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
     
+    @RequestMapping(value = "/", method = RequestMethod.GET)
+    public ModelAndView getRoot(Model model) {
+
+        log.info("{} >> MainController.getRoot", dateFormat.format(new Date()));
+
+        ModelAndView mav = new ModelAndView();
+		mav.setViewName("dashboard/main");
+		return mav;
+    }
+
     @RequestMapping(value = "/welcome", method = RequestMethod.GET)
 	public ModelAndView login(Model model) {
 		ModelAndView mav = new ModelAndView();
