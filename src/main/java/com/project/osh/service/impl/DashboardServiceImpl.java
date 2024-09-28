@@ -18,6 +18,8 @@ import com.project.osh.interfaces.InterfaceCore;
 import com.project.osh.service.DashboardService;
 import com.project.osh.util.JsonUtil;
 
+import lombok.val;
+
 @Service
 public class DashboardServiceImpl implements DashboardService{
 
@@ -80,7 +82,10 @@ public class DashboardServiceImpl implements DashboardService{
     public JsonObject getApplicationJsonObject() {
         log.info("{} >> DashboardServiceImpl.getApplicationJsonObject", dateFormat.format(new Date()));
         JsonObject jsonObject = new JsonObject();
-        jsonObject.addProperty("currentTime", new SimpleDateFormat("yyyy-MM-dd hh:mm:ss").format(new Timestamp(System.currentTimeMillis())));
+        java.util.TimeZone seoul = java.util.TimeZone.getTimeZone ( "Asia/Seoul" );
+        SimpleDateFormat seoulSdf = new SimpleDateFormat( "yyyy-MM-dd hh:mm:ss" ) ;
+        seoulSdf.setTimeZone ( seoul ) ;
+        jsonObject.addProperty("currentTime", seoulSdf.format(new Timestamp(System.currentTimeMillis())));
         jsonObject.addProperty("systemArchitecture", osBean.getArch().toString());
         jsonObject.addProperty("systemName",osBean.getName().toString());
         jsonObject.addProperty("systemVersion",osBean.getVersion().toString());
