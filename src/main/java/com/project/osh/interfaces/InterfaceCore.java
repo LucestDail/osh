@@ -33,4 +33,9 @@ public class InterfaceCore {
         return new TrafficInterface().getTrafficInfo();
 	}
 
+	public String getYeonhapInfo(){
+		log.info("{} >> InterfaceCore.getYeonhapInfo", dateFormat.format(new Date()));
+		return new NewsInterface().getYeonhapNews();
+	}
+
 }

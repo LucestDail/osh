@@ -1,6 +1,7 @@
 package com.project.osh.interfaces;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 
 import org.slf4j.Logger;
@@ -17,14 +18,16 @@ public class NewsInterface {
      public String getYeonhapNews(){
 
 		log.info("{} >> NewsInterface.getYeonhapNews", dateFormat.format(new Date()));
-		
-        String strWeatherInfo = "";
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        Calendar c1 = Calendar.getInstance();
+        String strToday = sdf.format(c1.getTime());
+        String strYeonhapNews = "";
 		try {
-	        strWeatherInfo = new HttpUtil().executeGet("https://api.openweathermap.org/data/2.5/weather?lat=37.245807&lon=127.057375&appid=e9ba762681ab8a0aa1e50fe52895b0eb");
+	        strYeonhapNews = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00051?serviceKey=0J2DA743WA9JIQIP&inqDt="+strToday);
 		}catch(Exception e) {
 			e.printStackTrace();
 		}
-        return strWeatherInfo;
+        return strYeonhapNews;
     }
     
 }

@@ -32,7 +32,7 @@ public class DashboardServiceImpl implements DashboardService{
     private JsonObject trafficJsonObject;
     private JsonObject emergencyJsonObject;
     private JsonObject chosunJsonObject;
-    private JsonObject hankyunJsonObject;
+    private JsonObject yeonhapJsonObject;
 
     OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
 
@@ -45,6 +45,7 @@ public class DashboardServiceImpl implements DashboardService{
         jsonObject.addProperty("applicationJson",getApplicationJsonObject().toString());
         jsonObject.addProperty("trafficJson",getTrafficJsonObject().toString());
         jsonObject.addProperty("emergencyJson",getEmergencyJsonObject().toString());
+        jsonObject.addProperty("yeonhapJson",getNewsYeonhapJsonObject().toString());
         return jsonObject;
     }
 
@@ -119,7 +120,12 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public JsonObject getNewsYeonhapJsonObject() {
-        return new JsonObject();
+        log.info("{} >> DashboardServiceImpl.getNewsYeonhapJsonObject", dateFormat.format(new Date()));
+        Calendar calendar = new GregorianCalendar();
+        int minute = calendar.get(Calendar.SECOND);
+        if(yeonhapJsonObject == null) yeonhapJsonObject = new JsonUtil().getJson(new InterfaceCore().getYeonhapInfo());
+        if(minute == 0) yeonhapJsonObject = new JsonUtil().getJson(new InterfaceCore().getYeonhapInfo());
+        return yeonhapJsonObject;
     }
 
     @Override
