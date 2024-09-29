@@ -16,11 +16,15 @@ public interface DashboardService {
 
     public JsonObject getApplicationJsonObject();
 
+    public JsonObject getTrafficWrapperJson();
+
     public JsonObject getTrafficJsonObject();
+
+    public JsonObject getEmergencyWrapperJson();
 
     public JsonObject getEmergencyJsonObject();
 
-    public JsonObject getNewsYeonhapJsonObject();
+    public JsonObject getYeonhapWrapperJson();
 
-    public JsonObject getNewsChosunJsonObject();
+    public JsonObject getNewsYeonhapJsonObject();
 }

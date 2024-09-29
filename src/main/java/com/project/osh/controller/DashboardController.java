@@ -37,9 +37,7 @@ public class DashboardController {
     
     @RequestMapping(value = "/main", method = RequestMethod.GET)
     public ModelAndView getMain(Model model) {
-
         log.info("{} >> DashboardController.getMain", dateFormat.format(new Date()));
-
         ModelAndView mav = new ModelAndView();
 		mav.setViewName("dashboard/main");
 		return mav;
@@ -51,13 +49,27 @@ public class DashboardController {
         return Flux.interval(Duration.ofSeconds(1)).map(i -> ServerSentEvent.builder(dashboardService.getDashboardJsonObject().toString()).build());
     }
 
+    @RequestMapping(value = "/main/emergency", method = RequestMethod.GET)
+    public Flux<ServerSentEvent<String>> getEmergencyInfo() {
+        log.info("{} >> DashboardController.getEmergencyInfo", dateFormat.format(new Date()));
+        return Flux.interval(Duration.ofSeconds(60)).map(i -> ServerSentEvent.builder(dashboardService.getEmergencyWrapperJson().toString()).build());
+    }
+
+    @RequestMapping(value = "/main/traffic", method = RequestMethod.GET)
+    public Flux<ServerSentEvent<String>> getTrafficInfo() {
+        log.info("{} >> DashboardController.getTrafficInfo", dateFormat.format(new Date()));
+        return Flux.interval(Duration.ofSeconds(60)).map(i -> ServerSentEvent.builder(dashboardService.getTrafficWrapperJson().toString()).build());
+    }
+
+    @RequestMapping(value = "/main/yeonhap", method = RequestMethod.GET)
+    public Flux<ServerSentEvent<String>> getYeonhapInfo() {
+        log.info("{} >> DashboardController.getYeonhapInfo", dateFormat.format(new Date()));
+        return Flux.interval(Duration.ofSeconds(60)).map(i -> ServerSentEvent.builder(dashboardService.getYeonhapWrapperJson().toString()).build());
+    }
+
     @RequestMapping(value = "/main", method = RequestMethod.POST)
     public String postMain(@RequestBody String entity) {
-
         log.info("{} >> DashboardController.postMain", dateFormat.format(new Date()));
-
-        //TODO: process POST request
-        
         return entity;
     }
 

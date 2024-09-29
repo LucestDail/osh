@@ -18,8 +18,6 @@ import com.project.osh.interfaces.InterfaceCore;
 import com.project.osh.service.DashboardService;
 import com.project.osh.util.JsonUtil;
 
-import lombok.val;
-
 @Service
 public class DashboardServiceImpl implements DashboardService{
 
@@ -31,7 +29,6 @@ public class DashboardServiceImpl implements DashboardService{
     private JsonObject weatherJsonObject2;
     private JsonObject trafficJsonObject;
     private JsonObject emergencyJsonObject;
-    private JsonObject chosunJsonObject;
     private JsonObject yeonhapJsonObject;
 
     OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
@@ -53,9 +50,9 @@ public class DashboardServiceImpl implements DashboardService{
     public JsonObject getWeatherJsonObject() {
         log.info("{} >> DashboardServiceImpl.getWeatherJsonObject", dateFormat.format(new Date()));
         Calendar calendar = new GregorianCalendar();
-        int minute = calendar.get(Calendar.SECOND);
+        int second = calendar.get(Calendar.SECOND);
         if(weatherJsonObject == null) weatherJsonObject = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo());
-        if(minute == 0) weatherJsonObject = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo());
+        if(second == 0) weatherJsonObject = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo());
         return weatherJsonObject;
     }
 
@@ -63,9 +60,9 @@ public class DashboardServiceImpl implements DashboardService{
     public JsonObject getWeatherJsonObject1(String lat, String lon) {
         log.info("{} >> DashboardServiceImpl.getWeatherJsonObject1", dateFormat.format(new Date()));
         Calendar calendar = new GregorianCalendar();
-        int minute = calendar.get(Calendar.SECOND);
+        int second = calendar.get(Calendar.SECOND);
         if(weatherJsonObject1 == null) weatherJsonObject1 = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
-        if(minute == 0) weatherJsonObject1 = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
+        if(second == 0) weatherJsonObject1 = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
         return weatherJsonObject1;
     }
 
@@ -73,9 +70,9 @@ public class DashboardServiceImpl implements DashboardService{
     public JsonObject getWeatherJsonObject2(String lat, String lon) {
         log.info("{} >> DashboardServiceImpl.getWeatherJsonObject2", dateFormat.format(new Date()));
         Calendar calendar = new GregorianCalendar();
-        int minute = calendar.get(Calendar.SECOND);
+        int second = calendar.get(Calendar.SECOND);
         if(weatherJsonObject2 == null) weatherJsonObject2 = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
-        if(minute == 0) weatherJsonObject2 = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
+        if(second == 0) weatherJsonObject2 = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
         return weatherJsonObject2;
     }
 
@@ -83,8 +80,8 @@ public class DashboardServiceImpl implements DashboardService{
     public JsonObject getApplicationJsonObject() {
         log.info("{} >> DashboardServiceImpl.getApplicationJsonObject", dateFormat.format(new Date()));
         JsonObject jsonObject = new JsonObject();
-        java.util.TimeZone seoul = java.util.TimeZone.getTimeZone ( "Asia/Seoul" );
         SimpleDateFormat seoulSdf = new SimpleDateFormat( "yyyy-MM-dd hh:mm:ss" ) ;
+        java.util.TimeZone seoul = java.util.TimeZone.getTimeZone ( "Asia/Seoul" );
         seoulSdf.setTimeZone ( seoul ) ;
         jsonObject.addProperty("currentTime", seoulSdf.format(new Timestamp(System.currentTimeMillis())));
         jsonObject.addProperty("systemArchitecture", osBean.getArch().toString());
@@ -99,47 +96,66 @@ public class DashboardServiceImpl implements DashboardService{
     }
 
     @Override
+    public JsonObject getTrafficWrapperJson(){
+        log.info("{} >> DashboardServiceImpl.getTrafficWrapperJson", dateFormat.format(new Date()));
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("trafficJson",getTrafficJsonObject().toString());
+        return jsonObject;
+    }
+
+    @Override
     public JsonObject getTrafficJsonObject() {
         log.info("{} >> DashboardServiceImpl.getTrafficJsonObject", dateFormat.format(new Date()));
         Calendar calendar = new GregorianCalendar();
-        int minute = calendar.get(Calendar.SECOND);
+        int second = calendar.get(Calendar.SECOND);
         if(trafficJsonObject == null) trafficJsonObject = new JsonUtil().getJson(new InterfaceCore().getTrafficInfo());
-        if(minute == 0) trafficJsonObject = new JsonUtil().getJson(new InterfaceCore().getTrafficInfo());
+        if(second == 0) trafficJsonObject = new JsonUtil().getJson(new InterfaceCore().getTrafficInfo());
         return trafficJsonObject;
+    }
+
+    @Override
+    public JsonObject getEmergencyWrapperJson(){
+        log.info("{} >> DashboardServiceImpl.getEmergencyWrapperJson", dateFormat.format(new Date()));
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("emergencyJson",getEmergencyJsonObject().toString());
+        return jsonObject;
     }
 
     @Override
     public JsonObject getEmergencyJsonObject() {
         log.info("{} >> DashboardServiceImpl.getEmergencyJsonObject", dateFormat.format(new Date()));
         Calendar calendar = new GregorianCalendar();
-        int minute = calendar.get(Calendar.SECOND);
+        int second = calendar.get(Calendar.SECOND);
         if(emergencyJsonObject == null) emergencyJsonObject = new JsonUtil().getJson(new InterfaceCore().getEmergencyInfo());
-        if(minute == 0) emergencyJsonObject = new JsonUtil().getJson(new InterfaceCore().getEmergencyInfo());
+        if(second == 0) emergencyJsonObject = new JsonUtil().getJson(new InterfaceCore().getEmergencyInfo());
         return emergencyJsonObject;
+    }
+
+    @Override
+    public JsonObject getYeonhapWrapperJson(){
+        log.info("{} >> DashboardServiceImpl.getYeonhapWrapperJson", dateFormat.format(new Date()));
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("yeonhapJson",getNewsYeonhapJsonObject().toString());
+        return jsonObject;
     }
 
     @Override
     public JsonObject getNewsYeonhapJsonObject() {
         log.info("{} >> DashboardServiceImpl.getNewsYeonhapJsonObject", dateFormat.format(new Date()));
         Calendar calendar = new GregorianCalendar();
-        int minute = calendar.get(Calendar.SECOND);
+        int second = calendar.get(Calendar.SECOND);
         if(yeonhapJsonObject == null) yeonhapJsonObject = new JsonUtil().getJson(new InterfaceCore().getYeonhapInfo());
-        if(minute == 0) yeonhapJsonObject = new JsonUtil().getJson(new InterfaceCore().getYeonhapInfo());
+        if(second == 0) yeonhapJsonObject = new JsonUtil().getJson(new InterfaceCore().getYeonhapInfo());
         return yeonhapJsonObject;
-    }
-
-    @Override
-    public JsonObject getNewsChosunJsonObject() {
-        return new JsonObject();
     }
 
     @Override
     public JsonObject getWeatherJsonObject(String lat, String lon) {
         log.info("{} >> DashboardServiceImpl.getWeatherJsonObject(lat,lon)", dateFormat.format(new Date()));
         Calendar calendar = new GregorianCalendar();
-        int minute = calendar.get(Calendar.SECOND);
+        int second = calendar.get(Calendar.SECOND);
         if(weatherJsonObject == null) weatherJsonObject = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
-        if(minute == 0) weatherJsonObject = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
+        if(second == 0) weatherJsonObject = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
         return weatherJsonObject;
     }
     

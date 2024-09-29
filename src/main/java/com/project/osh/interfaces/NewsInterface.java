@@ -19,10 +19,12 @@ public class NewsInterface {
 
 		log.info("{} >> NewsInterface.getYeonhapNews", dateFormat.format(new Date()));
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-        Calendar c1 = Calendar.getInstance();
-        String strToday = sdf.format(c1.getTime());
+		java.util.TimeZone seoul = java.util.TimeZone.getTimeZone ( "Asia/Seoul" );
+        sdf.setTimeZone ( seoul ) ;
+        String strToday = sdf.format(System.currentTimeMillis());
         String strYeonhapNews = "";
 		try {
+			log.info("{} >> getYeonhapNews.request", "https://www.safetydata.go.kr/V2/api/DSSP-IF-00051?serviceKey=0J2DA743WA9JIQIP&inqDt="+strToday);
 	        strYeonhapNews = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00051?serviceKey=0J2DA743WA9JIQIP&inqDt="+strToday);
 		}catch(Exception e) {
 			e.printStackTrace();

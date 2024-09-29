@@ -20,6 +20,7 @@ public class WeatherInterface{
 		
         String strWeatherInfo = "";
 		try {
+			log.info("{} >> getOpenweathermap.request", "https://api.openweathermap.org/data/2.5/weather?lat=37.245807&lon=127.057375&appid=e9ba762681ab8a0aa1e50fe52895b0eb");
 	        strWeatherInfo = new HttpUtil().executeGet("https://api.openweathermap.org/data/2.5/weather?lat=37.245807&lon=127.057375&appid=e9ba762681ab8a0aa1e50fe52895b0eb");
 		}catch(Exception e) {
 			e.printStackTrace();
@@ -33,6 +34,7 @@ public class WeatherInterface{
 		
         String strWeatherInfo = "";
 		try {
+			log.info("{} >> getOpenweathermap.request", "https://api.openweathermap.org/data/2.5/weather?lat="+lat+"&lon="+lon+"&appid=e9ba762681ab8a0aa1e50fe52895b0eb");
 	        strWeatherInfo = new HttpUtil().executeGet("https://api.openweathermap.org/data/2.5/weather?lat="+lat+"&lon="+lon+"&appid=e9ba762681ab8a0aa1e50fe52895b0eb");
 		}catch(Exception e) {
 			e.printStackTrace();
