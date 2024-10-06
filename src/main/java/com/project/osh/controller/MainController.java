@@ -4,6 +4,7 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.Date;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,12 +24,12 @@ public class MainController {
 
     private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
 	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+
+    @Value("${osh.logging}")
+    private boolean loggingFlag;
     
     @RequestMapping(value = "/", method = RequestMethod.GET)
     public ModelAndView getRoot(Model model) {
-
-        log.info("{} >> MainController.getRoot", dateFormat.format(new Date()));
-
         ModelAndView mav = new ModelAndView();
 		mav.setViewName("dashboard/main");
 		return mav;

@@ -9,7 +9,7 @@ public class JsonUtil {
 		try {
 			jsonObj = (JsonObject) JsonParser.parseString(strJson);
 		}catch(Exception e) {
-			System.out.println("=============== JSON ERROR ===============");
+			e.printStackTrace();
 		}
 	    return jsonObj;
 	}

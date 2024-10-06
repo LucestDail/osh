@@ -17,7 +17,6 @@ public class MessageService {
 
     public void register(Consumer<String> listener) {
         listeners.add(listener);
-        LOGGER.info("Added a listener, for a total of {} listener{}", listeners.size(), listeners.size() > 1 ? "s" : "");
     }
 
     public void process(String message) {

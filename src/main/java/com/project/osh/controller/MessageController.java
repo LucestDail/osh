@@ -29,7 +29,6 @@ public class MessageController {
 
     @PostMapping("/send")
     public String send(@RequestBody String message) {
-        LOGGER.debug("Received '{}'", message);
         processor.process(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()) + " " + message);
         return "Done";
     }

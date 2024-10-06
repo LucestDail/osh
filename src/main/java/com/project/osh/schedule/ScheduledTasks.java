@@ -6,6 +6,7 @@ import java.util.Date;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,11 +19,17 @@ public class ScheduledTasks {
 	private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
 	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 
+	@Value("${osh.logging}")
+    private boolean loggingFlag;
+
 	@Autowired DashboardService dashboardService;
 
 	@Scheduled(fixedDelay = 60000)
 	public void renewObjects() {
-		log.info("{} >> ScheduledTasks.renewObjects", dateFormat.format(new Date()));
+		if(loggingFlag){
+            log.info("{} >> ScheduledTasks.renewObjects", dateFormat.format(new Date()));
+        }
+		
 		dashboardService.renewEmergencyJsonObject();
 		dashboardService.renewTrafficJsonObject();
 		dashboardService.renewNewsYeonhapJsonObject();

@@ -10,6 +10,7 @@ import java.util.Date;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 
 import com.project.osh.controller.DashboardController;
 import com.project.osh.util.HttpUtil;
@@ -18,9 +19,9 @@ public class TrafficInterface {
 
     private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
 	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
-
+	@Value("${osh.logging}")
+    private boolean loggingFlag;
      public String getTrafficInfo(){
-
 		log.info("{} >> TrafficInterface.getTrafficInfo", dateFormat.format(new Date()));
         String strTrafficInfo = "";
 		try {

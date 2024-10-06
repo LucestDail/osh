@@ -8,6 +8,7 @@ import java.util.Date;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.google.gson.JsonObject;
@@ -29,11 +30,16 @@ public class DashboardServiceImpl implements DashboardService{
     private static JsonObject emergencyJsonObject;
     private static JsonObject yeonhapJsonObject;
 
+    @Value("${osh.logging}")
+    private boolean loggingFlag;
+
     OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
 
     @Override
     public JsonObject getDashboardJsonObject() {
-        log.info("{} >> DashboardServiceImpl.getDashboardJsonObject", dateFormat.format(new Date()));
+        if(loggingFlag){
+            log.info("{} >> DashboardServiceImpl.getDashboardJsonObject", dateFormat.format(new Date()));
+        }
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("weatherJson1",getWeatherJsonObject1("35.221316","128.682037").toString());
         jsonObject.addProperty("weatherJson2",getWeatherJsonObject2("37.245807","127.057375").toString());
@@ -46,28 +52,36 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public JsonObject getWeatherJsonObject() {
-        log.info("{} >> DashboardServiceImpl.getWeatherJsonObject", dateFormat.format(new Date()));
+        if(loggingFlag){
+            log.info("{} >> DashboardServiceImpl.getWeatherJsonObject", dateFormat.format(new Date()));
+        }
         if(weatherJsonObject == null) weatherJsonObject = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo());
         return weatherJsonObject;
     }
 
     @Override
     public JsonObject getWeatherJsonObject(String lat, String lon) {
-        log.info("{} >> DashboardServiceImpl.getWeatherJsonObject(lat,lon)", dateFormat.format(new Date()));
+        if(loggingFlag){
+            log.info("{} >> DashboardServiceImpl.getWeatherJsonObject(lat,lon)", dateFormat.format(new Date()));
+        }
         if(weatherJsonObject == null) weatherJsonObject = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
         return weatherJsonObject;
     }
 
     @Override
     public JsonObject getWeatherJsonObject1(String lat, String lon) {
-        log.info("{} >> DashboardServiceImpl.getWeatherJsonObject1", dateFormat.format(new Date()));
+        if(loggingFlag){
+            log.info("{} >> DashboardServiceImpl.getWeatherJsonObject1", dateFormat.format(new Date()));
+        }
         if(weatherJsonObject1 == null) weatherJsonObject1 = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
         return weatherJsonObject1;
     }
 
     @Override
     public JsonObject getWeatherJsonObject2(String lat, String lon) {
-        log.info("{} >> DashboardServiceImpl.getWeatherJsonObject2", dateFormat.format(new Date()));
+        if(loggingFlag){
+            log.info("{} >> DashboardServiceImpl.getWeatherJsonObject2", dateFormat.format(new Date()));
+        }
         if(weatherJsonObject2 == null) weatherJsonObject2 = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
         return weatherJsonObject2;
     }
@@ -94,7 +108,9 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public JsonObject getApplicationJsonObject() {
-        log.info("{} >> DashboardServiceImpl.getApplicationJsonObject", dateFormat.format(new Date()));
+        if(loggingFlag){
+            log.info("{} >> DashboardServiceImpl.getApplicationJsonObject", dateFormat.format(new Date()));
+        }
         JsonObject jsonObject = new JsonObject();
         SimpleDateFormat seoulSdf = new SimpleDateFormat( "yyyy-MM-dd hh:mm:ss" ) ;
         java.util.TimeZone seoul = java.util.TimeZone.getTimeZone ( "Asia/Seoul" );
@@ -113,7 +129,9 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public JsonObject getTrafficWrapperJson(){
-        log.info("{} >> DashboardServiceImpl.getTrafficWrapperJson", dateFormat.format(new Date()));
+        if(loggingFlag){
+            log.info("{} >> DashboardServiceImpl.getTrafficWrapperJson", dateFormat.format(new Date()));
+        }
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("trafficJson",getTrafficJsonObject().toString());
         return jsonObject;
@@ -121,7 +139,9 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public JsonObject getTrafficJsonObject() {
-        log.info("{} >> DashboardServiceImpl.getTrafficJsonObject", dateFormat.format(new Date()));
+        if(loggingFlag){
+            log.info("{} >> DashboardServiceImpl.getTrafficJsonObject", dateFormat.format(new Date()));
+        }
         if(trafficJsonObject == null) trafficJsonObject = new JsonUtil().getJson(new InterfaceCore().getTrafficInfo());
         return trafficJsonObject;
     }
@@ -133,7 +153,9 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public JsonObject getEmergencyWrapperJson(){
-        log.info("{} >> DashboardServiceImpl.getEmergencyWrapperJson", dateFormat.format(new Date()));
+        if(loggingFlag){
+            log.info("{} >> DashboardServiceImpl.getEmergencyWrapperJson", dateFormat.format(new Date()));
+        }
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("emergencyJson",getEmergencyJsonObject().toString());
         return jsonObject;
@@ -141,7 +163,9 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public JsonObject getEmergencyJsonObject() {
-        log.info("{} >> DashboardServiceImpl.getEmergencyJsonObject", dateFormat.format(new Date()));
+        if(loggingFlag){
+            log.info("{} >> DashboardServiceImpl.getEmergencyJsonObject", dateFormat.format(new Date()));
+        }
         if(emergencyJsonObject == null) emergencyJsonObject = new JsonUtil().getJson(new InterfaceCore().getEmergencyInfo());
         return emergencyJsonObject;
     }
@@ -153,7 +177,9 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public JsonObject getYeonhapWrapperJson(){
-        log.info("{} >> DashboardServiceImpl.getYeonhapWrapperJson", dateFormat.format(new Date()));
+        if(loggingFlag){
+            log.info("{} >> DashboardServiceImpl.getYeonhapWrapperJson", dateFormat.format(new Date()));
+        }
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("yeonhapJson",getNewsYeonhapJsonObject().toString());
         return jsonObject;
@@ -161,7 +187,9 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public JsonObject getNewsYeonhapJsonObject() {
-        log.info("{} >> DashboardServiceImpl.getNewsYeonhapJsonObject", dateFormat.format(new Date()));
+        if(loggingFlag){
+            log.info("{} >> DashboardServiceImpl.getNewsYeonhapJsonObject", dateFormat.format(new Date()));
+        }
         if(yeonhapJsonObject == null) yeonhapJsonObject = new JsonUtil().getJson(new InterfaceCore().getYeonhapInfo());
         return yeonhapJsonObject;
     }
