@@ -29,9 +29,23 @@ public class MainController {
     private boolean loggingFlag;
     
     @RequestMapping(value = "/", method = RequestMethod.GET)
-    public ModelAndView getRoot(Model model) {
+    public ModelAndView getMain(Model model) {
         ModelAndView mav = new ModelAndView();
 		mav.setViewName("dashboard/main");
+		return mav;
+    }
+
+    @RequestMapping(value = "/afterWork", method = RequestMethod.GET)
+    public ModelAndView getAfterWork(Model model) {
+        ModelAndView mav = new ModelAndView();
+		mav.setViewName("dashboard/afterWork");
+		return mav;
+    }
+
+    @RequestMapping(value = "/beforeWork", method = RequestMethod.GET)
+    public ModelAndView getBoforeWork(Model model) {
+        ModelAndView mav = new ModelAndView();
+		mav.setViewName("dashboard/beforeWork");
 		return mav;
     }
 
