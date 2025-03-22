@@ -9,6 +9,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.json.JSONObject;
 import org.json.JSONArray;
+import org.springframework.jdbc.core.RowMapper;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
 
 @Component
 public class NewsCore {
@@ -29,16 +33,19 @@ public class NewsCore {
                         "ORDER BY n.News_CreateDT DESC " +
                         "LIMIT 10";
 
-            JSONArray newsArray = new JSONArray();
-            jdbcTemplate.query(sql, (rs, rowNum) -> {
+            RowMapper<JSONObject> rowMapper = (ResultSet rs, int rowNum) -> {
                 JSONObject newsItem = new JSONObject();
                 newsItem.put("createDT", rs.getString("News_CreateDT"));
                 newsItem.put("company", rs.getString("News_Company_Name"));
                 newsItem.put("title", rs.getString("News_title"));
                 newsItem.put("content", rs.getString("News_contents"));
                 newsItem.put("link", rs.getString("News_from"));
-                newsArray.put(newsItem);
-            });
+                return newsItem;
+            };
+
+            List<JSONObject> newsList = jdbcTemplate.query(sql, rowMapper);
+            JSONArray newsArray = new JSONArray();
+            newsList.forEach(newsArray::put);
 
             result.put("data", new JSONObject().put("items", newsArray));
             log.info("뉴스 데이터 조회 완료: {}건", newsArray.length());
