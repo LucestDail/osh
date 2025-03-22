@@ -26,6 +26,8 @@ public class TrafficInterface {
         String strTrafficInfo = "";
 		try {
 	        strTrafficInfo = new HttpUtil().executeGet("https://openapi.its.go.kr:9443/eventInfo?apiKey=409b7fa7f23c4baf956e166d78b97726&type=all&eventType=all&getType=json");
+			log.info("{} >> TrafficInterface.getTrafficInfo - 교통 정보 조회 완료", dateFormat.format(new Date()));
+			log.info("{} >> TrafficInterface.getTrafficInfo - 교통 정보 : {}", dateFormat.format(new Date()), strTrafficInfo);
 		}catch(Exception e) {
 			e.printStackTrace();
 		}

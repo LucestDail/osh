@@ -26,14 +26,14 @@ public class ScheduledTasks {
 
 	@Scheduled(fixedDelay = 60000)
 	public void renewObjects() {
-		if(loggingFlag){
-            log.info("{} >> ScheduledTasks.renewObjects", dateFormat.format(new Date()));
-        }
-		
-		dashboardService.renewEmergencyJsonObject();
-		dashboardService.renewTrafficJsonObject();
-		dashboardService.renewNewsYeonhapJsonObject();
-		dashboardService.renewWeatherJsonObject1("35.221316","128.682037");
-		dashboardService.renewWeatherJsonObject2("37.245807","127.057375");
+		try {
+			dashboardService.renewEmergencyJsonObject();
+			dashboardService.renewTrafficJsonObject();
+			dashboardService.renewNewsYeonhapJsonObject();
+			dashboardService.renewWeatherJsonObject1("35.221316","128.682037");
+			dashboardService.renewWeatherJsonObject2("37.245807","127.057375");
+		} catch (Exception e) {
+			log.error("Error in scheduled task: {}", e.getMessage());
+		}
 	}
 }

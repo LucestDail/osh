@@ -34,6 +34,7 @@ public class WeatherInterface{
 		try {
 			log.info("{} >> getOpenweathermap.request", "https://api.openweathermap.org/data/2.5/weather?lat="+lat+"&lon="+lon+"&appid=e9ba762681ab8a0aa1e50fe52895b0eb");
 	        strWeatherInfo = new HttpUtil().executeGet("https://api.openweathermap.org/data/2.5/weather?lat="+lat+"&lon="+lon+"&appid=e9ba762681ab8a0aa1e50fe52895b0eb");
+			log.info(strWeatherInfo);
 		}catch(Exception e) {
 			e.printStackTrace();
 		}

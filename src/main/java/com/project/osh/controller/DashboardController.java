@@ -87,7 +87,15 @@ public class DashboardController {
     @RequestMapping(value = "/weather/info", method = RequestMethod.GET)
     public Flux<ServerSentEvent<String>> getWeatherInfo() {
         log.info("{} >> DashboardController.getWeatherInfo", dateFormat.format(new Date()));
-        return Flux.interval(Duration.ofSeconds(1)).map(i -> ServerSentEvent.builder(dashboardService.getDashboardJsonObject().toString()).build());
+        return Flux.interval(Duration.ofSeconds(1))
+            .map(i -> {
+                try {
+                    return ServerSentEvent.builder(dashboardService.getDashboardJsonObject().toString()).build();
+                } catch (Exception e) {
+                    log.error("Error getting weather info: {}", e.getMessage());
+                    return ServerSentEvent.builder("{}").build();
+                }
+            });
     }
     
     
