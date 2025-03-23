@@ -32,9 +32,6 @@ public class EmergencyInterface {
             String strToday = sdf.format(System.currentTimeMillis());
             String strYesterday = sdf.format(System.currentTimeMillis() - 24 * 60 * 60 * 1000);
 
-            if(loggingFlag) {
-                log.info("{} >> getTrafficInfo.request", "https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=7DCBUF3EBA0Y6WQ1&crtDt="+strToday);
-            }
             strTrafficInfo = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=7DCBUF3EBA0Y6WQ1&crtDt="+strToday);
             strTrafficInfoYesterday = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=7DCBUF3EBA0Y6WQ1&crtDt="+strYesterday);
 
@@ -71,9 +68,6 @@ public class EmergencyInterface {
     }
 
     public String getEmergencyInfo() {
-        if(loggingFlag) {
-            log.info("{} >> EmergencyInterface.getEmergencyInfo", dateFormat.format(new Date()));
-        }
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         java.util.TimeZone seoul = java.util.TimeZone.getTimeZone("Asia/Seoul");
         sdf.setTimeZone(seoul);
@@ -81,9 +75,6 @@ public class EmergencyInterface {
         String strYesterday = sdf.format(System.currentTimeMillis() - 24 * 60 * 60 * 1000);
 
         try {
-            if(loggingFlag) {
-                log.info("{} >> getEmergencyInfo.request", "https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=7DCBUF3EBA0Y6WQ1&crtDt="+strToday);
-            }
             String strEmergencyInfo = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=7DCBUF3EBA0Y6WQ1&crtDt="+strToday);
             String strEmergencyInfoYesterday = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=7DCBUF3EBA0Y6WQ1&crtDt="+strYesterday);
 

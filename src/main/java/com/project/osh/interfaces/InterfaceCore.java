@@ -18,38 +18,23 @@ public class InterfaceCore {
     private boolean loggingFlag;
 
 	public String getWeatherInfo() {
-		if(loggingFlag) {
-			log.info("{} >> InterfaceCore.getWeatherInfo", dateFormat.format(new Date()));
-		}
         return new WeatherInterface().getOpenweathermap();
 	}
 
 	public String getWeatherInfo(String lat, String lon) {
-		if(loggingFlag) {
-			log.info("{} >> InterfaceCore.getWeatherInfo", dateFormat.format(new Date()));
-		}
         return new WeatherInterface().getOpenweathermap(lat, lon);
 	}
 	
 	public String getEmergencyInfo() {
-		if(loggingFlag) {
-			log.info("{} >> InterfaceCore.getEmergencyInfo", dateFormat.format(new Date()));
-		}
         return new EmergencyInterface().getEmergencyInfo();
 	}
 	
 	public String getTrafficInfo() {
-		if(loggingFlag) {
-			log.info("{} >> InterfaceCore.getTrafficInfo", dateFormat.format(new Date()));
-		}
         return new TrafficInterface().getTrafficInfo();
 	}
 
 	public String getYeonhapInfo(){
-		if(loggingFlag) {
-			log.info("{} >> InterfaceCore.getYeonhapInfo", dateFormat.format(new Date()));
-		}
-		return new NewsInterface().getYeonhapNews();
+        return new NewsInterface().getYeonhapNews();
 	}
 
 }

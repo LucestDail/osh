@@ -302,5 +302,4 @@ public class DashboardServiceImpl implements DashboardService{
         dataObject.add("items", newsService.getCachedNews());
         yeonhapJsonObject.add("data", dataObject);
     }
-    
 }
