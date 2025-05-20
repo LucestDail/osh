@@ -390,7 +390,7 @@
                 // Receive messages
                 eventSource.onmessage = function (event) {
                     currentResponse = event.data;
-                const oldContent = document.getElementById('weatherTbody').innerHTML;
+                    const oldContent = document.getElementById('weatherTbody').innerHTML;
                     emergencyJsonParser(event.data);
                     applicationJsonParser(event.data);
                     weatherJsonParser(event.data);
@@ -434,13 +434,13 @@
                 // Receive messages
                 eventSource2.onmessage = function (event) {
                     currentResponse2 = event.data;
-                const oldContent = document.getElementById('emergencyTbody').innerHTML;
+                    const oldContent = document.getElementById('emergencyTbody').innerHTML;
                     emergencyJsonParser(event.data);
                 
-                // 내용이 변경된 경우에만 애니메이션 적용
-                if (oldContent !== document.getElementById('emergencyTbody').innerHTML) {
-                    addUpdateAnimation(document.getElementById('emergencyTable'));
-                }
+                    // 내용이 변경된 경우에만 애니메이션 적용
+                    if (oldContent !== document.getElementById('emergencyTbody').innerHTML) {
+                        addUpdateAnimation(document.getElementById('emergencyTable'));
+                    }
                 };
                 eventSource2.onerror = function (e) {
                     console.log("EventSource failed: " + e);
@@ -454,13 +454,13 @@
                 // Receive messages
                 eventSource3.onmessage = function (event) {
                     currentResponse3 = event.data;
-                const oldContent = document.getElementById('newsTbody').innerHTML;
-                newsJsonParser(event.data);
+                    const oldContent = document.getElementById('newsTbody').innerHTML;
+                    newsJsonParser(event.data);
                 
-                // 내용이 변경된 경우에만 애니메이션 적용
-                if (oldContent !== document.getElementById('newsTbody').innerHTML) {
-                    addUpdateAnimation(document.getElementById('newsTable'));
-                }
+                    // 내용이 변경된 경우에만 애니메이션 적용
+                    if (oldContent !== document.getElementById('newsTbody').innerHTML) {
+                        addUpdateAnimation(document.getElementById('newsTable'));
+                    }
                 };
                 eventSource3.onerror = function (e) {
                     console.log("EventSource failed: " + e);
@@ -521,14 +521,14 @@
 							<div class="table-responsive">
 								<table id="weatherTable" class="table table-bordered">
                         <colgroup>
+                            <col style="width:4%">
                             <col style="width:12%">
+                            <col style="width:8%">
+                            <col style="width:8%">
+                            <col style="width:8%">
                             <col style="width:12%">
-                            <col style="width:12%">
-                            <col style="width:12%">
-                            <col style="width:12%">
-                            <col style="width:12%">
-                            <col style="width:12%">
-                            <col style="width:12%">
+                            <col style="width:24%">
+                            <col style="width:24%">
                         </colgroup>
                         <thead>
                             <tr>
@@ -565,16 +565,16 @@
 						<div class="card-header">
 							<h5 class="card-title">실시간 긴급재난문자</h5>
 							<i class="bi bi-exclamation-triangle card-icon"></i>
-            </div>
+                        </div>
 						<div class="card-body">
 							<div class="table-responsive">
 								<table id="emergencyTable" class="table table-bordered">
                         <colgroup>
-                            <col style="width:8%">
+                            <col style="width:16%">
                             <col style="width:20%">
-                            <col style="width:56%">
-                            <col style="width:8%">
-                            <col style="width:8%">
+                            <col style="width:40%">
+                            <col style="width:12%">
+                            <col style="width:12%">
                         </colgroup>
                         <thead>
                             <tr>
@@ -610,11 +610,11 @@
 							<div class="table-responsive">
 								<table id="trafficTable" class="table table-bordered">
                         <colgroup>
+                            <col style="width:16%">
+                            <col style="width:20%">
                             <col style="width:8%">
+                            <col style="width:32%">
                             <col style="width:12%">
-                            <col style="width:8%">
-                            <col style="width:52%">
-                            <col style="width:8%">
                             <col style="width:12%">
                         </colgroup>
                         <thead>
@@ -727,10 +727,9 @@
 								<table class="table table-hover">
 									<thead>
 										<tr>
-											<th style="width: 15%">시간</th>
-											<th style="width: 15%">언론사</th>
-											<th style="width: 40%">제목</th>
-											<th style="width: 30%">내용</th>
+											<th style="width: 12%">시간</th>
+											<th style="width: 16%">제목</th>
+											<th style="width: 72%">내용</th>
 										</tr>
 									</thead>
 									<tbody id="newsTbody">

@@ -77,15 +77,14 @@ public class EmergencyInterface {
         try {
             String strEmergencyInfo = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=7DCBUF3EBA0Y6WQ1&crtDt="+strToday);
             String strEmergencyInfoYesterday = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=7DCBUF3EBA0Y6WQ1&crtDt="+strYesterday);
-
             // 두 JSON 데이터를 하나로 합치기
             JsonObject combinedJson = new JsonObject();
             JsonArray emergencyArray = new JsonArray();
             
             // 오늘 데이터 파싱 및 추가
             JsonObject todayJson = JsonParser.parseString(strEmergencyInfo).getAsJsonObject();
-            if (todayJson.has("items")) {
-                JsonArray todayItems = todayJson.getAsJsonArray("items");
+            if (todayJson.has("body")) {
+                JsonArray todayItems = todayJson.getAsJsonArray("body");
                 for (JsonElement item : todayItems) {
                     emergencyArray.add(item);
                 }
@@ -93,8 +92,8 @@ public class EmergencyInterface {
             
             // 어제 데이터 파싱 및 추가
             JsonObject yesterdayJson = JsonParser.parseString(strEmergencyInfoYesterday).getAsJsonObject();
-            if (yesterdayJson.has("items")) {
-                JsonArray yesterdayItems = yesterdayJson.getAsJsonArray("items");
+            if (yesterdayJson.has("body")) {
+                JsonArray yesterdayItems = yesterdayJson.getAsJsonArray("body");
                 for (JsonElement item : yesterdayItems) {
                     emergencyArray.add(item);
                 }

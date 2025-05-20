@@ -50,28 +50,17 @@ function emergencyJsonParser(jsonString) {
         }
 
         const jsonData = JSON.parse(getTargetJson("emergencyJson",jsonString));
-        if (!jsonData.emergencyJson) {
-            // console.error('유효하지 않은 긴급재난문자 데이터 형식입니다.');
-            return;
-        }
-
-        const emergencyData = JSON.parse(jsonData.emergencyJson);
-        if (!emergencyData.data || !emergencyData.data.items) {
-            console.error('긴급재난문자 데이터에 items가 없습니다.');
-            return;
-        }
-
-        const emergencyItems = emergencyData.data.items.slice(0, 10); // 최대 10개 항목만 표시
+        const emergencyItems = jsonData.items.slice(0, 10); // 최대 10개 항목만 표시
         emergencyTbody.innerHTML = '';
 
         emergencyItems.forEach(item => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${formatDate(item.createDT)}</td>
-                <td>${item.area || '-'}</td>
-                <td>${item.content || '-'}</td>
-                <td>${item.type || '-'}</td>
-                <td>${item.detail || '-'}</td>
+                <td>${formatDate(item.CRT_DT)}</td>
+                <td>${item.RCPTN_RGN_NM || '-'}</td>
+                <td>${item.MSG_CN || '-'}</td>
+                <td>${item.EMRG_STEP_NM || '-'}</td>
+                <td>${item.DST_SE_NM || '-'}</td>
             `;
             emergencyTbody.appendChild(row);
         });
@@ -119,19 +108,18 @@ function newsJsonParser(data) {
             return;
         }
 
-        const newsItems = jsonData.data.items.slice(0, 10); // 최대 10개 항목만 표시
+        const newsItems = jsonData.data.items.slice(0, 20); // 최대 10개 항목만 표시
         newsTbody.innerHTML = '';
 
         newsItems.forEach(item => {
             const row = document.createElement('tr');
             // 내용이 너무 길 경우 자동으로 줄임
-            const truncatedContent = item.content && item.content.length > 100 
-                ? item.content.substring(0, 100) + '...' 
+            const truncatedContent = item.content && item.content.length > 200 
+                ? item.content.substring(0, 200) + '...' 
                 : item.content;
             
             row.innerHTML = `
                 <td>${formatDate(item.createDT)}</td>
-                <td>${item.company || '-'}</td>
                 <td>${item.title || '-'}</td>
                 <td>${truncatedContent || '-'}</td>
             `;
@@ -353,13 +341,12 @@ function yeonhapJsonParser(jsonString) {
         newsItems.forEach(item => {
             const row = document.createElement('tr');
             // 내용이 너무 길 경우 자동으로 줄임
-            const truncatedContent = item.content && item.content.length > 100 
-                ? item.content.substring(0, 100) + '...' 
+            const truncatedContent = item.content && item.content.length > 300 
+                ? item.content.substring(0, 300) + '...' 
                 : item.content;
             
             row.innerHTML = `
                 <td>${formatDate(item.createDT)}</td>
-                <td>${item.company || '-'}</td>
                 <td>${item.title || '-'}</td>
                 <td>${truncatedContent || '-'}</td>
             `;
