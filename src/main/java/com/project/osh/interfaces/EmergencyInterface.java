@@ -7,6 +7,7 @@ import java.util.Date;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import com.project.osh.controller.DashboardController;
 import com.project.osh.util.HttpUtil;
@@ -15,6 +16,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+@Component
 public class EmergencyInterface {
     private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
 	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");

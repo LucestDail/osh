@@ -8,38 +8,82 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
 public class EventEmitterService {
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
+    private final AtomicInteger emitterCount = new AtomicInteger(0);
+    private static final long SSE_TIMEOUT = 30 * 60 * 1000L; // 30 minutes
 
     public SseEmitter createEmitter() {
-        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
+        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT);
         emitters.add(emitter);
+        emitterCount.incrementAndGet();
         
-        emitter.onCompletion(() -> emitters.remove(emitter));
-        emitter.onTimeout(() -> emitters.remove(emitter));
-        emitter.onError(e -> {
-            log.error("SSE connection error", e);
+        emitter.onCompletion(() -> {
             emitters.remove(emitter);
+            emitterCount.decrementAndGet();
+            log.debug("SSE connection completed. Active connections: {}", emitterCount.get());
         });
+        
+        emitter.onTimeout(() -> {
+            emitters.remove(emitter);
+            emitterCount.decrementAndGet();
+            log.debug("SSE connection timed out. Active connections: {}", emitterCount.get());
+        });
+        
+        emitter.onError(e -> {
+            emitters.remove(emitter);
+            emitterCount.decrementAndGet();
+            log.debug("SSE connection error: {}. Active connections: {}", e.getMessage(), emitterCount.get());
+        });
+
+        try {
+            // Send initial heartbeat
+            emitter.send(SseEmitter.event()
+                .name("heartbeat")
+                .data("connected", MediaType.TEXT_PLAIN));
+        } catch (IOException e) {
+            log.error("Error sending initial heartbeat", e);
+            emitters.remove(emitter);
+            emitterCount.decrementAndGet();
+        }
 
         return emitter;
     }
 
     public void broadcastNewsUpdate(List<News> news) {
+        if (emitters.isEmpty()) {
+            return;
+        }
+
         List<SseEmitter> deadEmitters = new CopyOnWriteArrayList<>();
         
         emitters.forEach(emitter -> {
             try {
-                emitter.send(news, MediaType.APPLICATION_JSON);
+                emitter.send(SseEmitter.event()
+                    .name("news")
+                    .data(news, MediaType.APPLICATION_JSON));
             } catch (IOException e) {
-                log.error("Error sending news update", e);
                 deadEmitters.add(emitter);
+                log.debug("Error sending news update to client: {}", e.getMessage());
+            } catch (Exception e) {
+                deadEmitters.add(emitter);
+                log.error("Unexpected error while sending news update", e);
             }
         });
         
-        emitters.removeAll(deadEmitters);
+        if (!deadEmitters.isEmpty()) {
+            emitters.removeAll(deadEmitters);
+            emitterCount.addAndGet(-deadEmitters.size());
+            log.debug("Removed {} dead emitters. Active connections: {}", 
+                deadEmitters.size(), emitterCount.get());
+        }
+    }
+
+    public int getActiveConnectionCount() {
+        return emitterCount.get();
     }
 } 

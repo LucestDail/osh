@@ -35,6 +35,13 @@ public class MainController {
 		return mav;
     }
 
+    @RequestMapping(value = "/dashboard", method = RequestMethod.GET)
+    public ModelAndView getDashboard(Model model) {
+        ModelAndView mav = new ModelAndView();
+        mav.setViewName("dashboard");
+        return mav;
+    }
+
     @RequestMapping(value = "/afterWork", method = RequestMethod.GET)
     public ModelAndView getAfterWork(Model model) {
         ModelAndView mav = new ModelAndView();

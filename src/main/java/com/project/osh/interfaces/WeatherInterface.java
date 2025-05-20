@@ -6,10 +6,12 @@ import java.util.Date;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import com.project.osh.controller.DashboardController;
 import com.project.osh.util.HttpUtil;
 
+@Component
 public class WeatherInterface{
 
 	private static final Logger log = LoggerFactory.getLogger(DashboardController.class);

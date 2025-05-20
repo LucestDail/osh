@@ -362,6 +362,38 @@
                 font-size: 0.9rem;
             }
         }
+
+        /* 네비게이션 바 스타일 추가 */
+        .navbar {
+            background-color: var(--card-bg);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 0.5rem 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .navbar-brand {
+            color: var(--primary-color);
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+        
+        .nav-link {
+            color: var(--text-primary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            transition: background-color 0.3s;
+        }
+        
+        .nav-link:hover {
+            background-color: var(--light-color);
+            color: var(--primary-color);
+        }
+        
+        .nav-link.active {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
     </style>
     <script type="text/javascript" src="js/jsonParser.js"></script>
     <script type="text/javascript" src="js/utils.js"></script>
@@ -449,7 +481,7 @@
 
             window.addEventListener("load", function () {
                 // Connect to the server
-            eventSource3 = new EventSource("/api/news/stream");
+                eventSource3 = new EventSource("/dashboard/main/yeonhap");
 
                 // Receive messages
                 eventSource3.onmessage = function (event) {
@@ -463,9 +495,15 @@
                     }
                 };
                 eventSource3.onerror = function (e) {
-                    console.log("EventSource failed: " + e);
+                    console.error("News SSE connection failed:", e);
+                    eventSource3.close();
+                    // 5초 후 재연결 시도
+                    setTimeout(() => {
+                        console.log("Attempting to reconnect to news SSE...");
+                        eventSource3 = new EventSource("/dashboard/main/yeonhap");
+                    }, 5000);
                 };
-        }, false);
+            }, false);
     </script>
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -502,6 +540,17 @@
 </head>
 
 <body>
+    <!-- 네비게이션 바 추가 -->
+    <nav class="navbar">
+        <div class="container">
+            <a class="navbar-brand" href="/">OSH</a>
+            <div class="d-flex">
+                <a class="nav-link active" href="/">메인 대시보드</a>
+                <a class="nav-link" href="/dashboard">AI 대시보드</a>
+            </div>
+        </div>
+    </nav>
+
 	<section class="conA">
 		<div class="dashboard-container">
 			<div class="dashboard-header">
