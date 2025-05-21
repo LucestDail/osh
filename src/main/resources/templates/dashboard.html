@@ -180,6 +180,56 @@
             font-size: 0.9rem;
             margin-bottom: 1rem;
         }
+
+        /* 로딩 애니메이션 스타일 추가 */
+        .loading-container {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading-message {
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            margin: 1rem 0;
+            min-height: 2rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .loading-message.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .loading-spinner {
+            width: 3rem;
+            height: 3rem;
+            border: 4px solid var(--light-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-message {
+            color: var(--success-color);
+            font-size: 1.2rem;
+            margin: 1rem 0;
+            opacity: 0;
+            transform: scale(0.8);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .success-message.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
     </style>
 </head>
 <body>
@@ -214,6 +264,20 @@
     </div>
 
     <script>
+        // 로딩 메시지 배열
+        const loadingMessages = [
+            "AI가 뉴스를 분석하고 있어요... 📰",
+            "날씨 데이터를 수집하는 중... 🌤️",
+            "긴급 상황을 확인하고 있어요... 🚨",
+            "교통 정보를 분석하는 중... 🚗",
+            "데이터를 종합하고 있어요... 📊",
+            "거의 다 왔어요! 조금만 더... ⏳",
+            "마지막 점검 중... ✨"
+        ];
+
+        let currentMessageIndex = 0;
+        let messageInterval;
+
         // 대시보드 요약 데이터를 가져오는 함수
         function fetchDashboardSummary() {
             showLoading();
@@ -240,27 +304,62 @@
                 });
         }
 
+        // 로딩 표시 함수
+        function showLoading() {
+            const loadingContainer = document.createElement('div');
+            loadingContainer.className = 'loading-container';
+            loadingContainer.innerHTML = `
+                <div class="loading-spinner"></div>
+                <div class="loading-message">${loadingMessages[0]}</div>
+            `;
+            document.getElementById('dashboard-content').innerHTML = '';
+            document.getElementById('dashboard-content').appendChild(loadingContainer);
+
+            // 메시지 전환 애니메이션 시작
+            const messageElement = loadingContainer.querySelector('.loading-message');
+            messageElement.classList.add('visible');
+            
+            currentMessageIndex = 0;
+            messageInterval = setInterval(() => {
+                messageElement.classList.remove('visible');
+                setTimeout(() => {
+                    currentMessageIndex = (currentMessageIndex + 1) % loadingMessages.length;
+                    messageElement.textContent = loadingMessages[currentMessageIndex];
+                    messageElement.classList.add('visible');
+                }, 500);
+            }, 3000);
+        }
+
+        // 로딩 완료 함수
+        function hideLoading() {
+            clearInterval(messageInterval);
+            const loadingContainer = document.querySelector('.loading-container');
+            if (loadingContainer) {
+                const successMessage = document.createElement('div');
+                successMessage.className = 'success-message';
+                successMessage.textContent = '데이터 로딩 완료! 🎉';
+                loadingContainer.appendChild(successMessage);
+                
+                setTimeout(() => {
+                    successMessage.classList.add('visible');
+                }, 100);
+            }
+        }
+
         // 대시보드 UI 업데이트 함수
         function updateDashboardUI(markdownContent) {
             // 마크다운을 HTML로 변환
             const htmlContent = marked.parse(markdownContent);
-            document.getElementById('dashboard-content').innerHTML = htmlContent;
             
-            // 마지막 업데이트 시간 표시
-            const now = new Date();
-            document.getElementById('last-update').textContent = 
-                `마지막 업데이트: ${now.toLocaleString()}`;
-        }
-
-        // 로딩 표시 함수
-        function showLoading() {
-            document.getElementById('dashboard-content').innerHTML = 
-                '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">데이터를 불러오는 중...</p></div>';
-        }
-
-        // 로딩 숨기기 함수
-        function hideLoading() {
-            // 로딩 스피너는 updateDashboardUI에서 자동으로 대체됨
+            // 로딩 완료 메시지 표시 후 데이터 업데이트
+            setTimeout(() => {
+                document.getElementById('dashboard-content').innerHTML = htmlContent;
+                
+                // 마지막 업데이트 시간 표시
+                const now = new Date();
+                document.getElementById('last-update').textContent = 
+                    `마지막 업데이트: ${now.toLocaleString()}`;
+            }, 1000);
         }
 
         // 에러 표시 함수

@@ -83,7 +83,42 @@ public class GeminiService {
             
             // 데이터 수집
             List<News> recentNews = newsService.getAllNews();
-            String weatherData = weatherInterface.getOpenweathermap();
+            
+            // 각 도시별 날씨 정보 수집
+            StringBuilder weatherDataBuilder = new StringBuilder();
+            String[][] cities = {
+                {"창원", "35.2273", "128.6817"},  // 창원
+                {"서울", "37.5665", "126.9780"},  // 서울
+                {"부산", "35.1796", "129.0756"},  // 부산
+                {"인천", "37.4563", "126.7052"},  // 인천
+                {"대구", "35.8687", "128.5990"},  // 대구
+                {"대전", "36.3505", "127.3750"},  // 대전
+                {"광주", "35.1600", "126.8514"},  // 광주
+                {"수원", "37.2636", "127.0286"},  // 수원
+                {"울산", "35.5384", "129.3114"},  // 울산
+                {"고양", "37.6584", "126.8320"},  // 고양
+                {"용인", "37.2411", "127.1776"},  // 용인
+                {"포항", "36.0320", "129.3650"},  // 포항
+                {"김해", "35.2284", "128.8893"},  // 김해
+                {"김천", "36.1398", "128.1136"},  // 김천
+                {"제주", "33.4996", "126.5312"},  // 제주
+                {"춘천", "37.8813", "127.7300"},  // 춘천
+                {"원주", "37.3442", "127.9200"},  // 원주
+                {"강릉", "37.7519", "128.8960"},  // 강릉
+                {"속초", "38.2070", "128.5928"}   // 속초
+            };
+
+            weatherDataBuilder.append("전국 주요 도시 날씨 정보:\n\n");
+            for (String[] city : cities) {
+                String cityName = city[0];
+                String lat = city[1];
+                String lon = city[2];
+                String cityWeather = weatherInterface.getOpenweathermap(lat, lon);
+                weatherDataBuilder.append(cityName).append(" 날씨 정보:\n");
+                weatherDataBuilder.append(cityWeather).append("\n\n");
+            }
+            String weatherData = weatherDataBuilder.toString();
+            
             String emergencyData = emergencyInterface.getEmergencyInfo();
             String trafficData = trafficInterface.getTrafficInfo();
             
