@@ -28,12 +28,6 @@ public class NewsController {
 
         try {
             List<News> news = newsService.getAllNews();
-            log.info("Sending {} news items to client", news.size());
-            if (!news.isEmpty()) {
-                log.info("First news item: title={}, company={}", 
-                    news.get(0).getNewsTitle(), 
-                    news.get(0).getNewsCompany());
-            }
             emitter.send(news, MediaType.APPLICATION_JSON);
         } catch (IOException e) {
             log.error("Error sending initial news data", e);
@@ -45,17 +39,13 @@ public class NewsController {
 
     @GetMapping("/all")
     public List<News> getAllNews() {
-        log.info("GET /api/news/all requested");
         List<News> news = newsService.getAllNews();
-        log.info("Returning {} news items", news.size());
         return news;
     }
 
     @GetMapping("/company/{company}")
     public List<News> getNewsByCompany(@PathVariable String company) {
-        log.info("GET /api/news/company/{} requested", company);
         List<News> news = newsService.getNewsByCompany(company);
-        log.info("Returning {} news items for company {}", news.size(), company);
         return news;
     }
 } 

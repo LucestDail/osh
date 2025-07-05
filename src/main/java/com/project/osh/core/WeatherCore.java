@@ -12,16 +12,9 @@ public class WeatherCore {
     private boolean loggingFlag = true;
 
     public String getOpenweathermap(String lat, String lon) {
-        if(loggingFlag) {
-            log.info("{} >> WeatherCore.getOpenweathermap - API 호출 시작 (위도: {}, 경도: {})", dateFormat.format(new Date()), lat, lon);
-        }
         try {
             String url = "https://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&appid=7c1c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c&units=metric&lang=kr";
             String result = new HttpUtil().executeGet(url);
-            
-            if(loggingFlag) {
-                log.info("{} >> WeatherCore.getOpenweathermap - API 응답 결과: {}", dateFormat.format(new Date()), result);
-            }
             
             return result;
         } catch (Exception e) {

@@ -25,19 +25,16 @@ public class EventEmitterService {
         emitter.onCompletion(() -> {
             emitters.remove(emitter);
             emitterCount.decrementAndGet();
-            log.debug("SSE connection completed. Active connections: {}", emitterCount.get());
         });
         
         emitter.onTimeout(() -> {
             emitters.remove(emitter);
             emitterCount.decrementAndGet();
-            log.debug("SSE connection timed out. Active connections: {}", emitterCount.get());
         });
         
         emitter.onError(e -> {
             emitters.remove(emitter);
             emitterCount.decrementAndGet();
-            log.debug("SSE connection error: {}. Active connections: {}", e.getMessage(), emitterCount.get());
         });
 
         try {
@@ -68,7 +65,6 @@ public class EventEmitterService {
                     .data(news, MediaType.APPLICATION_JSON));
             } catch (IOException e) {
                 deadEmitters.add(emitter);
-                log.debug("Error sending news update to client: {}", e.getMessage());
             } catch (Exception e) {
                 deadEmitters.add(emitter);
                 log.error("Unexpected error while sending news update", e);
@@ -78,8 +74,6 @@ public class EventEmitterService {
         if (!deadEmitters.isEmpty()) {
             emitters.removeAll(deadEmitters);
             emitterCount.addAndGet(-deadEmitters.size());
-            log.debug("Removed {} dead emitters. Active connections: {}", 
-                deadEmitters.size(), emitterCount.get());
         }
     }
 

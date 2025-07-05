@@ -81,37 +81,64 @@ public class DashboardServiceImpl implements DashboardService{
                 updateWeatherData();
                 lastWeatherUpdate = currentTime;
             }
-            jsonObject.addProperty("weatherJson", weatherJsonObject.toString());
+            if (weatherJsonObject != null) {
+                jsonObject.addProperty("weatherJson", weatherJsonObject.toString());
+            } else {
+                jsonObject.addProperty("weatherJson", "{}");
+            }
             
             // 교통 정보 (5분마다 갱신)
             if (currentTime - lastTrafficUpdate >= TRAFFIC_UPDATE_INTERVAL) {
                 trafficJsonObject = getTrafficJsonObject();
                 lastTrafficUpdate = currentTime;
             }
-            jsonObject.addProperty("trafficJson", trafficJsonObject.toString());
+            if (trafficJsonObject != null) {
+                jsonObject.addProperty("trafficJson", trafficJsonObject.toString());
+            } else {
+                jsonObject.addProperty("trafficJson", "{}");
+            }
             
             // 재난 정보 (5분마다 갱신)
             if (currentTime - lastEmergencyUpdate >= EMERGENCY_UPDATE_INTERVAL) {
                 emergencyJsonObject = getEmergencyJsonObject();
                 lastEmergencyUpdate = currentTime;
             }
-            jsonObject.addProperty("emergencyJson", emergencyJsonObject.toString());
+            if (emergencyJsonObject != null) {
+                jsonObject.addProperty("emergencyJson", emergencyJsonObject.toString());
+            } else {
+                jsonObject.addProperty("emergencyJson", "{}");
+            }
             
             // 뉴스 정보 (5분마다 갱신)
             if (currentTime - lastNewsUpdate >= NEWS_UPDATE_INTERVAL) {
                 yeonhapJsonObject = getNewsYeonhapJsonObject();
                 lastNewsUpdate = currentTime;
             }
-            jsonObject.addProperty("yeonhapJson", yeonhapJsonObject.toString());
+            if (yeonhapJsonObject != null) {
+                jsonObject.addProperty("yeonhapJson", yeonhapJsonObject.toString());
+            } else {
+                jsonObject.addProperty("yeonhapJson", "{}");
+            }
             
             // 서버 정보 (매번 갱신)
             applicationJsonObject = getApplicationJsonObject();
-            jsonObject.addProperty("applicationJson", applicationJsonObject.toString());
+            if (applicationJsonObject != null) {
+                jsonObject.addProperty("applicationJson", applicationJsonObject.toString());
+            } else {
+                jsonObject.addProperty("applicationJson", "{}");
+            }
             
             return jsonObject;
         } catch (Exception e) {
             log.error("Error getting dashboard data: {}", e.getMessage());
-            return null;
+            // 에러 발생 시에도 기본 구조의 JSON 반환
+            JsonObject errorJson = new JsonObject();
+            errorJson.addProperty("weatherJson", "{}");
+            errorJson.addProperty("trafficJson", "{}");
+            errorJson.addProperty("emergencyJson", "{}");
+            errorJson.addProperty("yeonhapJson", "{}");
+            errorJson.addProperty("applicationJson", "{}");
+            return errorJson;
         }
     }
 
@@ -218,7 +245,12 @@ public class DashboardServiceImpl implements DashboardService{
     @Override
     public JsonObject getTrafficWrapperJson(){
         JsonObject jsonObject = new JsonObject();
-        jsonObject.addProperty("trafficJson",getTrafficJsonObject().toString());
+        JsonObject trafficData = getTrafficJsonObject();
+        if (trafficData != null) {
+            jsonObject.addProperty("trafficJson", trafficData.toString());
+        } else {
+            jsonObject.addProperty("trafficJson", "{}");
+        }
         return jsonObject;
     }
 
@@ -237,13 +269,22 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public void renewTrafficJsonObject(){
-        trafficJsonObject = new JsonUtil().getJson(new InterfaceCore().getTrafficInfo());
+        try {
+            trafficJsonObject = new JsonUtil().getJson(new InterfaceCore().getTrafficInfo());
+        } catch (Exception e) {
+            log.error("Error renewing traffic data: {}", e.getMessage());
+        }
     }
 
     @Override
     public JsonObject getEmergencyWrapperJson(){
         JsonObject jsonObject = new JsonObject();
-        jsonObject.addProperty("emergencyJson",getEmergencyJsonObject().toString());
+        JsonObject emergencyData = getEmergencyJsonObject();
+        if (emergencyData != null) {
+            jsonObject.addProperty("emergencyJson", emergencyData.toString());
+        } else {
+            jsonObject.addProperty("emergencyJson", "{}");
+        }
         return jsonObject;
     }
 
@@ -272,7 +313,12 @@ public class DashboardServiceImpl implements DashboardService{
     @Override
     public JsonObject getYeonhapWrapperJson(){
         JsonObject jsonObject = new JsonObject();
-        jsonObject.addProperty("yeonhapJson",getNewsYeonhapJsonObject().toString());
+        JsonObject yeonhapData = getNewsYeonhapJsonObject();
+        if (yeonhapData != null) {
+            jsonObject.addProperty("yeonhapJson", yeonhapData.toString());
+        } else {
+            jsonObject.addProperty("yeonhapJson", "{}");
+        }
         return jsonObject;
     }
 
@@ -295,10 +341,14 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public void renewNewsYeonhapJsonObject(){
-        // NewsServiceImpl의 cachedNews 데이터로 갱신
-        yeonhapJsonObject = new JsonObject();
-        JsonObject dataObject = new JsonObject();
-        dataObject.add("items", newsService.getCachedNews());
-        yeonhapJsonObject.add("data", dataObject);
+        try {
+            // NewsServiceImpl의 cachedNews 데이터로 갱신
+            yeonhapJsonObject = new JsonObject();
+            JsonObject dataObject = new JsonObject();
+            dataObject.add("items", newsService.getCachedNews());
+            yeonhapJsonObject.add("data", dataObject);
+        } catch (Exception e) {
+            log.error("Error renewing news data: {}", e.getMessage());
+        }
     }
 }

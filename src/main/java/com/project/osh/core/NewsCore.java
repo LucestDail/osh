@@ -48,7 +48,6 @@ public class NewsCore {
             newsList.forEach(newsArray::put);
 
             result.put("data", new JSONObject().put("items", newsArray));
-            log.info("뉴스 데이터 조회 완료: {}건", newsArray.length());
         } catch (Exception e) {
             log.error("뉴스 데이터 조회 중 오류 발생: {}", e.getMessage());
             result.put("error", e.getMessage());

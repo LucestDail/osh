@@ -21,18 +21,14 @@ public class GeminiController {
 
     @PostMapping("/generate")
     public ResponseEntity<String> generateContent(@RequestBody String prompt) {
-        log.info("Received prompt: {}", prompt);
         String response = geminiService.generateContent(prompt);
-        log.info("Generated response: {}", response);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping(value = "/dashboard-summary", produces = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<String> getDashboardSummary() {
         try {
-            log.info("Generating dashboard summary");
             String summary = geminiService.generateDashboardSummary();
-            log.info("Dashboard summary generated successfully");
             return ResponseEntity.ok(summary);
         } catch (Exception e) {
             log.error("Error generating dashboard summary", e);

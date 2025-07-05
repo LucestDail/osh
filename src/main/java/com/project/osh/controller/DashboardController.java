@@ -17,6 +17,7 @@ import org.springframework.web.servlet.ModelAndView;
 import com.project.osh.service.DashboardService;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -42,22 +43,94 @@ public class DashboardController {
 
     @RequestMapping(value = "/main/info", method = RequestMethod.GET)
     public Flux<ServerSentEvent<String>> getMainInfo() {
-        return Flux.interval(Duration.ofSeconds(1)).map(i -> ServerSentEvent.builder(dashboardService.getDashboardJsonObject().toString()).build());
+        return Flux.interval(Duration.ofSeconds(1))
+            .onBackpressureDrop()
+            .map(i -> {
+                try {
+                    String data = dashboardService.getDashboardJsonObject() != null ? 
+                        dashboardService.getDashboardJsonObject().toString() : "{}";
+                    return ServerSentEvent.builder(data).build();
+                } catch (Exception e) {
+                    log.error("Error getting dashboard info: {}", e.getMessage());
+                    return ServerSentEvent.builder("{}").build();
+                }
+            })
+            .onErrorResume(e -> {
+                log.error("Error in dashboard info stream: {}", e.getMessage());
+                return Flux.empty();
+            })
+            .onErrorReturn(ServerSentEvent.builder("{}").build())
+            .doOnCancel(() -> log.debug("Dashboard info stream cancelled"))
+            .doOnComplete(() -> log.debug("Dashboard info stream completed"));
     }
 
     @RequestMapping(value = "/main/emergency", method = RequestMethod.GET)
     public Flux<ServerSentEvent<String>> getEmergencyInfo() {
-        return Flux.interval(Duration.ofSeconds(60)).map(i -> ServerSentEvent.builder(dashboardService.getEmergencyWrapperJson().toString()).build());
+        return Flux.interval(Duration.ofSeconds(60))
+            .onBackpressureDrop()
+            .map(i -> {
+                try {
+                    String data = dashboardService.getEmergencyWrapperJson() != null ? 
+                        dashboardService.getEmergencyWrapperJson().toString() : "{}";
+                    return ServerSentEvent.builder(data).build();
+                } catch (Exception e) {
+                    log.error("Error getting emergency info: {}", e.getMessage());
+                    return ServerSentEvent.builder("{}").build();
+                }
+            })
+            .onErrorResume(e -> {
+                log.error("Error in emergency info stream: {}", e.getMessage());
+                return Flux.empty();
+            })
+            .onErrorReturn(ServerSentEvent.builder("{}").build())
+            .doOnCancel(() -> log.debug("Emergency info stream cancelled"))
+            .doOnComplete(() -> log.debug("Emergency info stream completed"));
     }
 
     @RequestMapping(value = "/main/traffic", method = RequestMethod.GET)
     public Flux<ServerSentEvent<String>> getTrafficInfo() {
-        return Flux.interval(Duration.ofSeconds(60)).map(i -> ServerSentEvent.builder(dashboardService.getTrafficWrapperJson().toString()).build());
+        return Flux.interval(Duration.ofSeconds(60))
+            .onBackpressureDrop()
+            .map(i -> {
+                try {
+                    String data = dashboardService.getTrafficWrapperJson() != null ? 
+                        dashboardService.getTrafficWrapperJson().toString() : "{}";
+                    return ServerSentEvent.builder(data).build();
+                } catch (Exception e) {
+                    log.error("Error getting traffic info: {}", e.getMessage());
+                    return ServerSentEvent.builder("{}").build();
+                }
+            })
+            .onErrorResume(e -> {
+                log.error("Error in traffic info stream: {}", e.getMessage());
+                return Flux.empty();
+            })
+            .onErrorReturn(ServerSentEvent.builder("{}").build())
+            .doOnCancel(() -> log.debug("Traffic info stream cancelled"))
+            .doOnComplete(() -> log.debug("Traffic info stream completed"));
     }
 
     @RequestMapping(value = "/main/yeonhap", method = RequestMethod.GET)
     public Flux<ServerSentEvent<String>> getYeonhapInfo() {
-        return Flux.interval(Duration.ofSeconds(60)).map(i -> ServerSentEvent.builder(dashboardService.getYeonhapWrapperJson().toString()).build());
+        return Flux.interval(Duration.ofSeconds(60))
+            .onBackpressureDrop()
+            .map(i -> {
+                try {
+                    String data = dashboardService.getYeonhapWrapperJson() != null ? 
+                        dashboardService.getYeonhapWrapperJson().toString() : "{}";
+                    return ServerSentEvent.builder(data).build();
+                } catch (Exception e) {
+                    log.error("Error getting yeonhap info: {}", e.getMessage());
+                    return ServerSentEvent.builder("{}").build();
+                }
+            })
+            .onErrorResume(e -> {
+                log.error("Error in yeonhap info stream: {}", e.getMessage());
+                return Flux.empty();
+            })
+            .onErrorReturn(ServerSentEvent.builder("{}").build())
+            .doOnCancel(() -> log.debug("Yeonhap info stream cancelled"))
+            .doOnComplete(() -> log.debug("Yeonhap info stream completed"));
     }
 
     @RequestMapping(value = "/main", method = RequestMethod.POST)
@@ -75,13 +148,23 @@ public class DashboardController {
     @RequestMapping(value = "/weather/info", method = RequestMethod.GET)
     public Flux<ServerSentEvent<String>> getWeatherInfo() {
         return Flux.interval(Duration.ofSeconds(1))
+            .onBackpressureDrop()
             .map(i -> {
                 try {
-                    return ServerSentEvent.builder(dashboardService.getDashboardJsonObject().toString()).build();
+                    String data = dashboardService.getDashboardJsonObject() != null ? 
+                        dashboardService.getDashboardJsonObject().toString() : "{}";
+                    return ServerSentEvent.builder(data).build();
                 } catch (Exception e) {
                     log.error("Error getting weather info: {}", e.getMessage());
                     return ServerSentEvent.builder("{}").build();
                 }
-            });
+            })
+            .onErrorResume(e -> {
+                log.error("Error in weather info stream: {}", e.getMessage());
+                return Flux.empty();
+            })
+            .onErrorReturn(ServerSentEvent.builder("{}").build())
+            .doOnCancel(() -> log.debug("Weather info stream cancelled"))
+            .doOnComplete(() -> log.debug("Weather info stream completed"));
     }
 }
