@@ -58,12 +58,21 @@ public class DashboardServiceImpl implements DashboardService{
         updateWeatherData();
         lastWeatherUpdate = System.currentTimeMillis();
         
-        // 초기 교통 데이터 로드
-        trafficJsonObject = getTrafficJsonObject();
+        // 외부 API 호출은 지연시켜 애플리케이션 시작 속도 개선
+        // 초기에는 빈 객체로 설정하고, 첫 요청 시에 로드
+        trafficJsonObject = new JsonObject();
+        JsonObject trafficDataObject = new JsonObject();
+        JsonArray trafficEmptyArray = new JsonArray();
+        trafficDataObject.add("body", trafficEmptyArray);
+        trafficJsonObject.add("items", trafficEmptyArray);
         lastTrafficUpdate = System.currentTimeMillis();
         
-        // 초기 재난 데이터 로드
-        emergencyJsonObject = getEmergencyJsonObject();
+        // 재난 정보도 초기에는 빈 객체로 설정
+        emergencyJsonObject = new JsonObject();
+        JsonObject emergencyDataObject = new JsonObject();
+        JsonArray emergencyEmptyArray = new JsonArray();
+        emergencyDataObject.add("items", emergencyEmptyArray);
+        emergencyJsonObject.add("data", emergencyDataObject);
         lastEmergencyUpdate = System.currentTimeMillis();
         
         // 뉴스 데이터는 NewsService가 초기화된 후에 로드하도록 지연

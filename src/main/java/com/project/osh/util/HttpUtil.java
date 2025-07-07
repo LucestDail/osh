@@ -19,6 +19,10 @@ public class HttpUtil{
             connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
             connection.setUseCaches(false);
             connection.setDoOutput(true);
+            
+            // 타임아웃 설정 (10초)
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
 
             //Get Response  
             InputStream is = connection.getInputStream();
@@ -53,6 +57,10 @@ public class HttpUtil{
             connection.setRequestProperty("Content-Language", "en-US");  
             connection.setUseCaches(false);
             connection.setDoOutput(true);
+            
+            // 타임아웃 설정 (10초)
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
 
             //Send request
             DataOutputStream wr = new DataOutputStream (connection.getOutputStream());

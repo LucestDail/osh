@@ -24,7 +24,7 @@ public class WeatherInterface{
 		try {
 	        strWeatherInfo = new HttpUtil().executeGet("https://api.openweathermap.org/data/2.5/weather?lat=37.245807&lon=127.057375&appid=e9ba762681ab8a0aa1e50fe52895b0eb");
 		}catch(Exception e) {
-			e.printStackTrace();
+			log.error("날씨 정보 API 호출 중 오류 발생: {}", e.getMessage());
 		}
         return strWeatherInfo;
     }
@@ -34,7 +34,7 @@ public class WeatherInterface{
 		try {
 	        strWeatherInfo = new HttpUtil().executeGet("https://api.openweathermap.org/data/2.5/weather?lat="+lat+"&lon="+lon+"&appid=e9ba762681ab8a0aa1e50fe52895b0eb");
 		}catch(Exception e) {
-			e.printStackTrace();
+			log.error("날씨 정보 API 호출 중 오류 발생: {}", e.getMessage());
 		}
         return strWeatherInfo;
     }

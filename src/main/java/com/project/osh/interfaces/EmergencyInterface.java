@@ -64,8 +64,9 @@ public class EmergencyInterface {
             
             return combinedJson.toString();
         } catch (Exception e) {
-            e.printStackTrace();
-            return strTrafficInfo;
+            log.error("긴급재난문자 API 호출 중 오류 발생: {}", e.getMessage());
+            // 에러 발생 시 빈 JSON 구조 반환
+            return "{\"items\":[]}";
         }
     }
 
@@ -106,8 +107,9 @@ public class EmergencyInterface {
             
             return combinedJson.toString();
         } catch (Exception e) {
-            e.printStackTrace();
-            return "";
+            log.error("긴급재난문자 API 호출 중 오류 발생: {}", e.getMessage());
+            // 에러 발생 시 빈 JSON 구조 반환
+            return "{\"items\":[]}";
         }
     }
 }

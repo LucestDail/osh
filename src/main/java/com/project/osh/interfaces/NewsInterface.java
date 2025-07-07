@@ -28,7 +28,7 @@ public class NewsInterface {
 		try {
 	        strYeonhapNews = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00051?serviceKey=0J2DA743WA9JIQIP&inqDt="+strToday);
 		}catch(Exception e) {
-			e.printStackTrace();
+			log.error("뉴스 정보 API 호출 중 오류 발생: {}", e.getMessage());
 		}
         return strYeonhapNews;
     }
