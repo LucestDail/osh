@@ -104,12 +104,41 @@ function newsJsonParser(data) {
 
         const jsonData = JSON.parse(data);
         if (!jsonData.data || !jsonData.data.items) {
-            // console.error('유효하지 않은 뉴스 데이터 형식입니다.');
+            // 데이터가 없을 때 메시지 표시
+            newsTbody.innerHTML = `
+                <tr>
+                    <td colspan="3" class="text-center text-muted">
+                        <i class="mdi mdi-information-outline"></i>
+                        뉴스 데이터를 불러오는 중입니다...
+                    </td>
+                </tr>
+            `;
             return;
         }
 
-        const newsItems = jsonData.data.items.slice(0, 20); // 최대 10개 항목만 표시
+        const newsItems = jsonData.data.items.slice(0, 20); // 최대 20개 항목만 표시
         newsTbody.innerHTML = '';
+
+        // 데이터가 비어있거나 에러 상태인지 확인
+        if (newsItems.length === 0 || (newsItems.length === 1 && 
+            (newsItems[0].title === "데이터를 불러오는 중입니다..." || 
+             newsItems[0].title === "데이터 로드 중 오류가 발생했습니다" ||
+             newsItems[0].title === "서비스 초기화 중입니다..."))) {
+            
+            const message = newsItems.length > 0 ? newsItems[0].title : "뉴스 데이터를 불러오는 중입니다...";
+            const subMessage = newsItems.length > 0 ? newsItems[0].content : "잠시 후 다시 시도해주세요.";
+            
+            newsTbody.innerHTML = `
+                <tr>
+                    <td colspan="3" class="text-center text-muted">
+                        <i class="mdi mdi-information-outline"></i>
+                        <div>${message}</div>
+                        <small>${subMessage}</small>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
 
         newsItems.forEach(item => {
             const row = document.createElement('tr');
@@ -127,6 +156,19 @@ function newsJsonParser(data) {
         });
     } catch (error) {
         console.error('뉴스 데이터 파싱 중 오류 발생:', error);
+        // 에러 발생 시에도 사용자에게 메시지 표시
+        const newsTbody = document.getElementById('newsTbody');
+        if (newsTbody) {
+            newsTbody.innerHTML = `
+                <tr>
+                    <td colspan="3" class="text-center text-danger">
+                        <i class="mdi mdi-alert-circle-outline"></i>
+                        뉴스 데이터 로드 중 오류가 발생했습니다
+                        <br><small>잠시 후 다시 시도해주세요.</small>
+                    </td>
+                </tr>
+            `;
+        }
     }
 }
 
@@ -242,6 +284,8 @@ function applicationJsonParser(strJson){
     document.querySelector('#systemName').textContent = applicationJson.systemName;
     document.querySelector('#systemLoad').textContent = applicationJson.systemLoadAverage + '%';
     document.querySelector('#totalMemory').textContent = applicationJson.memory;
+    document.querySelector('#usedMemory').textContent = applicationJson.useMemory;
+    document.querySelector('#freeMemory').textContent = applicationJson.freeMemory;
     
     // 메모리 사용량 차트 업데이트
     updateMemoryChart(applicationJson);
@@ -254,7 +298,7 @@ function applicationJsonParser(strJson){
 function updateMemoryChart(data) {
     const ctx = document.getElementById('memoryChart').getContext('2d');
     
-    // 메모리 사용량 계산
+    // 메모리 사용량 계산 (MB 단위)
     const usedMemory = parseFloat(data.useMemory);
     const freeMemory = parseFloat(data.freeMemory);
     const totalMemory = usedMemory + freeMemory;
@@ -292,7 +336,7 @@ function updateMemoryChart(data) {
                     label: function(context) {
                         const value = context.raw;
                         const percentage = (value / (usedMemory + freeMemory) * 100).toFixed(1);
-                        return `${context.label}: ${value}GB (${percentage}%)`;
+                        return `${context.label}: ${value}MB (${percentage}%)`;
                     }
                 }
             }
@@ -314,6 +358,33 @@ function updateMemoryChart(data) {
             data: chartData,
             options: options
         });
+    }
+    
+    // 하단 서버 정보도 동기화하여 업데이트
+    updateServerInfoDisplay(data);
+}
+
+/**
+ * 서버 정보 표시 업데이트
+ * @param {Object} data 서버 정보 데이터
+ */
+function updateServerInfoDisplay(data) {
+    // 전체 메모리 정보 업데이트
+    const totalMemoryElement = document.querySelector('#totalMemory');
+    if (totalMemoryElement) {
+        totalMemoryElement.textContent = data.memory;
+    }
+    
+    // 사용 중인 메모리 정보를 별도로 표시할 요소가 있다면 업데이트
+    const usedMemoryElement = document.querySelector('#usedMemory');
+    if (usedMemoryElement) {
+        usedMemoryElement.textContent = data.useMemory;
+    }
+    
+    // 여유 메모리 정보를 별도로 표시할 요소가 있다면 업데이트
+    const freeMemoryElement = document.querySelector('#freeMemory');
+    if (freeMemoryElement) {
+        freeMemoryElement.textContent = data.freeMemory;
     }
 }
 

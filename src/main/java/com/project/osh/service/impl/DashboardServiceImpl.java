@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonArray;
 import com.project.osh.controller.DashboardController;
 import com.project.osh.interfaces.InterfaceCore;
 import com.project.osh.service.DashboardService;
@@ -65,8 +66,19 @@ public class DashboardServiceImpl implements DashboardService{
         emergencyJsonObject = getEmergencyJsonObject();
         lastEmergencyUpdate = System.currentTimeMillis();
         
-        // 초기 뉴스 데이터 로드
-        yeonhapJsonObject = getNewsYeonhapJsonObject();
+        // 뉴스 데이터는 NewsService가 초기화된 후에 로드하도록 지연
+        // 초기에는 빈 객체로 설정
+        yeonhapJsonObject = new JsonObject();
+        JsonObject dataObject = new JsonObject();
+        JsonArray emptyArray = new JsonArray();
+        JsonObject emptyNewsObject = new JsonObject();
+        emptyNewsObject.addProperty("createDT", "");
+        emptyNewsObject.addProperty("company", "");
+        emptyNewsObject.addProperty("title", "서비스 초기화 중입니다...");
+        emptyNewsObject.addProperty("content", "뉴스 서비스가 준비되지 않았습니다.");
+        emptyArray.add(emptyNewsObject);
+        dataObject.add("items", emptyArray);
+        yeonhapJsonObject.add("data", dataObject);
         lastNewsUpdate = System.currentTimeMillis();
     }
 
@@ -230,14 +242,20 @@ public class DashboardServiceImpl implements DashboardService{
         SimpleDateFormat seoulSdf = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
         java.util.TimeZone seoul = java.util.TimeZone.getTimeZone("Asia/Seoul");
         seoulSdf.setTimeZone(seoul);
+        
+        // 메모리 정보 계산 (MB 단위)
+        long totalMemory = Runtime.getRuntime().totalMemory() / (1024 * 1024);
+        long freeMemory = Runtime.getRuntime().freeMemory() / (1024 * 1024);
+        long usedMemory = totalMemory - freeMemory;
+        
         jsonObject.addProperty("currentTime", seoulSdf.format(new Timestamp(System.currentTimeMillis())));
         jsonObject.addProperty("systemArchitecture", osBean.getArch().toString());
         jsonObject.addProperty("systemName",osBean.getName().toString());
         jsonObject.addProperty("systemVersion",osBean.getVersion().toString());
         jsonObject.addProperty("systemLoadAverage",osBean.getSystemLoadAverage());
-        jsonObject.addProperty("memory", (Runtime.getRuntime().totalMemory()/(1024*1024)) + "MB");
-        jsonObject.addProperty("useMemory", ((Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory())/(1024*1024)) + "MB");
-        jsonObject.addProperty("freeMemory", (Runtime.getRuntime().freeMemory()/(1024*1024)) + "MB");
+        jsonObject.addProperty("memory", totalMemory + "MB");
+        jsonObject.addProperty("useMemory", usedMemory + "MB");
+        jsonObject.addProperty("freeMemory", freeMemory + "MB");
         jsonObject.addProperty("availableProcessors", (Runtime.getRuntime().availableProcessors()));
         return jsonObject;
     }
@@ -329,13 +347,40 @@ public class DashboardServiceImpl implements DashboardService{
                 // NewsServiceImpl의 cachedNews 데이터 사용
                 yeonhapJsonObject = new JsonObject();
                 JsonObject dataObject = new JsonObject();
-                dataObject.add("items", newsService.getCachedNews());
+                
+                // newsService가 null인 경우 처리
+                if (newsService != null) {
+                    dataObject.add("items", newsService.getCachedNews());
+                } else {
+                    log.warn("NewsService is null, creating empty news data");
+                    JsonArray emptyArray = new JsonArray();
+                    JsonObject emptyNewsObject = new JsonObject();
+                    emptyNewsObject.addProperty("createDT", "");
+                    emptyNewsObject.addProperty("company", "");
+                    emptyNewsObject.addProperty("title", "서비스 초기화 중입니다...");
+                    emptyNewsObject.addProperty("content", "뉴스 서비스가 준비되지 않았습니다.");
+                    emptyArray.add(emptyNewsObject);
+                    dataObject.add("items", emptyArray);
+                }
+                
                 yeonhapJsonObject.add("data", dataObject);
             }
             return yeonhapJsonObject;
         } catch (Exception e) {
             log.error("Error getting news data: {}", e.getMessage());
-            return null;
+            // 에러 발생 시에도 기본 구조의 JSON 반환
+            JsonObject errorJson = new JsonObject();
+            JsonObject dataObject = new JsonObject();
+            JsonArray errorArray = new JsonArray();
+            JsonObject errorNewsObject = new JsonObject();
+            errorNewsObject.addProperty("createDT", "");
+            errorNewsObject.addProperty("company", "");
+            errorNewsObject.addProperty("title", "데이터 로드 중 오류가 발생했습니다");
+            errorNewsObject.addProperty("content", "잠시 후 다시 시도해주세요.");
+            errorArray.add(errorNewsObject);
+            dataObject.add("items", errorArray);
+            errorJson.add("data", dataObject);
+            return errorJson;
         }
     }
 
@@ -345,10 +390,41 @@ public class DashboardServiceImpl implements DashboardService{
             // NewsServiceImpl의 cachedNews 데이터로 갱신
             yeonhapJsonObject = new JsonObject();
             JsonObject dataObject = new JsonObject();
-            dataObject.add("items", newsService.getCachedNews());
+            
+            // newsService가 null인 경우 처리
+            if (newsService != null) {
+                dataObject.add("items", newsService.getCachedNews());
+            } else {
+                log.warn("NewsService is null during renewal, creating empty news data");
+                JsonArray emptyArray = new JsonArray();
+                JsonObject emptyNewsObject = new JsonObject();
+                emptyNewsObject.addProperty("createDT", "");
+                emptyNewsObject.addProperty("company", "");
+                emptyNewsObject.addProperty("title", "서비스 초기화 중입니다...");
+                emptyNewsObject.addProperty("content", "뉴스 서비스가 준비되지 않았습니다.");
+                emptyArray.add(emptyNewsObject);
+                dataObject.add("items", emptyArray);
+            }
+            
             yeonhapJsonObject.add("data", dataObject);
         } catch (Exception e) {
             log.error("Error renewing news data: {}", e.getMessage());
+            // 에러 발생 시에도 기본 구조 유지
+            try {
+                yeonhapJsonObject = new JsonObject();
+                JsonObject dataObject = new JsonObject();
+                JsonArray errorArray = new JsonArray();
+                JsonObject errorNewsObject = new JsonObject();
+                errorNewsObject.addProperty("createDT", "");
+                errorNewsObject.addProperty("company", "");
+                errorNewsObject.addProperty("title", "데이터 갱신 중 오류가 발생했습니다");
+                errorNewsObject.addProperty("content", "잠시 후 다시 시도해주세요.");
+                errorArray.add(errorNewsObject);
+                dataObject.add("items", errorArray);
+                yeonhapJsonObject.add("data", dataObject);
+            } catch (Exception innerException) {
+                log.error("Error creating error response for news data: {}", innerException.getMessage());
+            }
         }
     }
 }

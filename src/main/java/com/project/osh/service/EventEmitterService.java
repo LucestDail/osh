@@ -60,11 +60,14 @@ public class EventEmitterService {
         
         emitters.forEach(emitter -> {
             try {
+                // news가 null이거나 비어있어도 빈 리스트로 전송
+                List<News> newsToSend = (news != null) ? news : List.of();
                 emitter.send(SseEmitter.event()
                     .name("news")
-                    .data(news, MediaType.APPLICATION_JSON));
+                    .data(newsToSend, MediaType.APPLICATION_JSON));
             } catch (IOException e) {
                 deadEmitters.add(emitter);
+                log.debug("Client disconnected during news broadcast");
             } catch (Exception e) {
                 deadEmitters.add(emitter);
                 log.error("Unexpected error while sending news update", e);
@@ -74,6 +77,7 @@ public class EventEmitterService {
         if (!deadEmitters.isEmpty()) {
             emitters.removeAll(deadEmitters);
             emitterCount.addAndGet(-deadEmitters.size());
+            log.debug("Removed {} dead emitters, {} remaining", deadEmitters.size(), emitters.size());
         }
     }
 

@@ -28,10 +28,28 @@ public class NewsController {
 
         try {
             List<News> news = newsService.getAllNews();
-            emitter.send(news, MediaType.APPLICATION_JSON);
+            if (news != null && !news.isEmpty()) {
+                emitter.send(news, MediaType.APPLICATION_JSON);
+            } else {
+                // 빈 데이터라도 전송하여 클라이언트가 연결 상태를 유지하도록 함
+                emitter.send(List.of(), MediaType.APPLICATION_JSON);
+            }
         } catch (IOException e) {
             log.error("Error sending initial news data", e);
-            emitter.completeWithError(e);
+            try {
+                emitter.send(List.of(), MediaType.APPLICATION_JSON);
+            } catch (IOException sendError) {
+                log.error("Error sending empty news data", sendError);
+                emitter.completeWithError(sendError);
+            }
+        } catch (Exception e) {
+            log.error("Unexpected error in news stream", e);
+            try {
+                emitter.send(List.of(), MediaType.APPLICATION_JSON);
+            } catch (IOException sendError) {
+                log.error("Error sending empty news data after exception", sendError);
+                emitter.completeWithError(sendError);
+            }
         }
 
         return emitter;
@@ -39,13 +57,23 @@ public class NewsController {
 
     @GetMapping("/all")
     public List<News> getAllNews() {
-        List<News> news = newsService.getAllNews();
-        return news;
+        try {
+            List<News> news = newsService.getAllNews();
+            return news != null ? news : List.of();
+        } catch (Exception e) {
+            log.error("Error getting all news", e);
+            return List.of();
+        }
     }
 
     @GetMapping("/company/{company}")
     public List<News> getNewsByCompany(@PathVariable String company) {
-        List<News> news = newsService.getNewsByCompany(company);
-        return news;
+        try {
+            List<News> news = newsService.getNewsByCompany(company);
+            return news != null ? news : List.of();
+        } catch (Exception e) {
+            log.error("Error getting news for company: {}", company, e);
+            return List.of();
+        }
     }
 } 
