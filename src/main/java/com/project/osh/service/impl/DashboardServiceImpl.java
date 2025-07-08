@@ -227,22 +227,58 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public void renewWeatherJsonObject(){
-        weatherJsonObject = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo());
+        try {
+            String weatherInfo = new InterfaceCore().getWeatherInfo();
+            if (weatherInfo != null && !weatherInfo.trim().isEmpty()) {
+                weatherJsonObject = new JsonUtil().getJson(weatherInfo);
+            } else {
+                log.warn("날씨 정보가 null이거나 비어있습니다. 기존 데이터 유지");
+            }
+        } catch (Exception e) {
+            log.error("Error renewing weather data: {}", e.getMessage());
+        }
     }
 
     @Override
     public void renewWeatherJsonObject(String lat, String lon){
-        weatherJsonObject = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat,lon));
+        try {
+            String weatherInfo = new InterfaceCore().getWeatherInfo(lat, lon);
+            if (weatherInfo != null && !weatherInfo.trim().isEmpty()) {
+                weatherJsonObject = new JsonUtil().getJson(weatherInfo);
+            } else {
+                log.warn("날씨 정보가 null이거나 비어있습니다. 기존 데이터 유지");
+            }
+        } catch (Exception e) {
+            log.error("Error renewing weather data: {}", e.getMessage());
+        }
     }
 
     @Override
     public void renewWeatherJsonObject1(String lat, String lon){
-        weatherJsonObject1 = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat,lon));
+        try {
+            String weatherInfo = new InterfaceCore().getWeatherInfo(lat, lon);
+            if (weatherInfo != null && !weatherInfo.trim().isEmpty()) {
+                weatherJsonObject1 = new JsonUtil().getJson(weatherInfo);
+            } else {
+                log.warn("날씨 정보1이 null이거나 비어있습니다. 기존 데이터 유지");
+            }
+        } catch (Exception e) {
+            log.error("Error renewing weather data1: {}", e.getMessage());
+        }
     }
 
     @Override
     public void renewWeatherJsonObject2(String lat, String lon){
-        weatherJsonObject2 = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat,lon));
+        try {
+            String weatherInfo = new InterfaceCore().getWeatherInfo(lat, lon);
+            if (weatherInfo != null && !weatherInfo.trim().isEmpty()) {
+                weatherJsonObject2 = new JsonUtil().getJson(weatherInfo);
+            } else {
+                log.warn("날씨 정보2가 null이거나 비어있습니다. 기존 데이터 유지");
+            }
+        } catch (Exception e) {
+            log.error("Error renewing weather data2: {}", e.getMessage());
+        }
     }
 
     @Override
@@ -297,9 +333,16 @@ public class DashboardServiceImpl implements DashboardService{
     @Override
     public void renewTrafficJsonObject(){
         try {
-            trafficJsonObject = new JsonUtil().getJson(new InterfaceCore().getTrafficInfo());
+            String trafficInfo = new InterfaceCore().getTrafficInfo();
+            if (trafficInfo != null && !trafficInfo.trim().isEmpty()) {
+                trafficJsonObject = new JsonUtil().getJson(trafficInfo);
+            } else {
+                log.warn("교통 정보가 null이거나 비어있습니다. 기존 데이터 유지");
+                // 기존 데이터 유지
+            }
         } catch (Exception e) {
             log.error("Error renewing traffic data: {}", e.getMessage());
+            // 에러 발생 시에도 기존 데이터 유지
         }
     }
 
@@ -331,9 +374,16 @@ public class DashboardServiceImpl implements DashboardService{
     @Override
     public void renewEmergencyJsonObject(){
         try {
-            emergencyJsonObject = new JsonUtil().getJson(new InterfaceCore().getEmergencyInfo());
+            String emergencyInfo = new InterfaceCore().getEmergencyInfo();
+            if (emergencyInfo != null && !emergencyInfo.trim().isEmpty()) {
+                emergencyJsonObject = new JsonUtil().getJson(emergencyInfo);
+            } else {
+                log.warn("긴급재난문자 정보가 null이거나 비어있습니다. 기존 데이터 유지");
+                // 기존 데이터 유지
+            }
         } catch (Exception e) {
             log.error("Error renewing emergency data: {}", e.getMessage());
+            // 에러 발생 시에도 기존 데이터 유지
         }
     }
 
