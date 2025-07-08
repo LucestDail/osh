@@ -423,11 +423,37 @@
                 eventSource.onmessage = function (event) {
                     currentResponse = event.data;
                     const oldContent = document.getElementById('weatherTbody').innerHTML;
-                    emergencyJsonParser(event.data);
-                    applicationJsonParser(event.data);
-                    weatherJsonParser(event.data);
-                    trafficJsonParser(event.data);
-                    yeonhapJsonParser(event.data);
+                    
+                    // 각 파서를 개별적으로 실행하여 한 파서의 실패가 다른 파서에 영향을 주지 않도록 함
+                    try {
+                        emergencyJsonParser(event.data);
+                    } catch (error) {
+                        console.error('긴급재난문자 파싱 실패:', error);
+                    }
+                    
+                    try {
+                        applicationJsonParser(event.data);
+                    } catch (error) {
+                        console.error('서버정보 파싱 실패:', error);
+                    }
+                    
+                    try {
+                        weatherJsonParser(event.data);
+                    } catch (error) {
+                        console.error('날씨정보 파싱 실패:', error);
+                    }
+                    
+                    try {
+                        trafficJsonParser(event.data);
+                    } catch (error) {
+                        console.error('교통정보 파싱 실패:', error);
+                    }
+                    
+                    try {
+                        yeonhapJsonParser(event.data);
+                    } catch (error) {
+                        console.error('뉴스정보 파싱 실패:', error);
+                    }
                 
                 // 내용이 변경된 경우에만 애니메이션 적용
                 if (oldContent !== document.getElementById('weatherTbody').innerHTML) {
@@ -446,8 +472,13 @@
                 // Receive messages
                 eventSource1.onmessage = function (event) {
                     currentResponse1 = event.data;
-                const oldContent = document.getElementById('trafficTbody').innerHTML;
-                    trafficJsonParser(event.data);
+                    const oldContent = document.getElementById('trafficTbody').innerHTML;
+                    
+                    try {
+                        trafficJsonParser(event.data);
+                    } catch (error) {
+                        console.error('교통정보 파싱 실패:', error);
+                    }
                 
                 // 내용이 변경된 경우에만 애니메이션 적용
                 if (oldContent !== document.getElementById('trafficTbody').innerHTML) {
@@ -467,7 +498,12 @@
                 eventSource2.onmessage = function (event) {
                     currentResponse2 = event.data;
                     const oldContent = document.getElementById('emergencyTbody').innerHTML;
-                    emergencyJsonParser(event.data);
+                    
+                    try {
+                        emergencyJsonParser(event.data);
+                    } catch (error) {
+                        console.error('긴급재난문자 파싱 실패:', error);
+                    }
                 
                     // 내용이 변경된 경우에만 애니메이션 적용
                     if (oldContent !== document.getElementById('emergencyTbody').innerHTML) {
@@ -487,7 +523,12 @@
                 eventSource3.onmessage = function (event) {
                     currentResponse3 = event.data;
                     const oldContent = document.getElementById('newsTbody').innerHTML;
-                    newsJsonParser(event.data);
+                    
+                    try {
+                        newsJsonParser(event.data);
+                    } catch (error) {
+                        console.error('뉴스정보 파싱 실패:', error);
+                    }
                 
                     // 내용이 변경된 경우에만 애니메이션 적용
                     if (oldContent !== document.getElementById('newsTbody').innerHTML) {
