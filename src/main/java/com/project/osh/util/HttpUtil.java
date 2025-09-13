@@ -21,8 +21,8 @@ public class HttpUtil{
             connection.setDoOutput(true);
             
             // 타임아웃 설정 (AWS 환경 고려하여 30초로 증가)
-            connection.setConnectTimeout(30000);
-            connection.setReadTimeout(30000);
+            connection.setConnectTimeout(60000);
+            connection.setReadTimeout(60000);
 
             //Get Response  
             InputStream is = connection.getInputStream();

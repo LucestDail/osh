@@ -1,8 +1,6 @@
 package com.project.osh.interfaces;
 
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +17,6 @@ import com.google.gson.JsonParser;
 @Component
 public class EmergencyInterface {
     private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
-	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 
 	@Value("${osh.logging}")
     private boolean loggingFlag;
@@ -43,7 +40,7 @@ public class EmergencyInterface {
             
             // 오늘 데이터 파싱 및 추가
             JsonObject todayJson = JsonParser.parseString(strTrafficInfo).getAsJsonObject();
-            if (todayJson.has("items")) {
+            if (todayJson.has("items") && !todayJson.get("items").isJsonNull()) {
                 JsonArray todayItems = todayJson.getAsJsonArray("items");
                 for (JsonElement item : todayItems) {
                     trafficArray.add(item);
@@ -52,7 +49,7 @@ public class EmergencyInterface {
             
             // 어제 데이터 파싱 및 추가
             JsonObject yesterdayJson = JsonParser.parseString(strTrafficInfoYesterday).getAsJsonObject();
-            if (yesterdayJson.has("items")) {
+            if (yesterdayJson.has("items") && !yesterdayJson.get("items").isJsonNull()) {
                 JsonArray yesterdayItems = yesterdayJson.getAsJsonArray("items");
                 for (JsonElement item : yesterdayItems) {
                     trafficArray.add(item);
@@ -86,7 +83,7 @@ public class EmergencyInterface {
             
             // 오늘 데이터 파싱 및 추가
             JsonObject todayJson = JsonParser.parseString(strEmergencyInfo).getAsJsonObject();
-            if (todayJson.has("body")) {
+            if (todayJson.has("body") && !todayJson.get("body").isJsonNull()) {
                 JsonArray todayItems = todayJson.getAsJsonArray("body");
                 for (JsonElement item : todayItems) {
                     emergencyArray.add(item);
@@ -95,7 +92,7 @@ public class EmergencyInterface {
             
             // 어제 데이터 파싱 및 추가
             JsonObject yesterdayJson = JsonParser.parseString(strEmergencyInfoYesterday).getAsJsonObject();
-            if (yesterdayJson.has("body")) {
+            if (yesterdayJson.has("body") && !yesterdayJson.get("body").isJsonNull()) {
                 JsonArray yesterdayItems = yesterdayJson.getAsJsonArray("body");
                 for (JsonElement item : yesterdayItems) {
                     emergencyArray.add(item);
