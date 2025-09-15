@@ -31,8 +31,8 @@ public class EmergencyInterface {
             String strToday = sdf.format(System.currentTimeMillis());
             String strYesterday = sdf.format(System.currentTimeMillis() - 24 * 60 * 60 * 1000);
 
-            strTrafficInfo = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=7DCBUF3EBA0Y6WQ1&crtDt="+strToday);
-            strTrafficInfoYesterday = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=7DCBUF3EBA0Y6WQ1&crtDt="+strYesterday);
+            strTrafficInfo = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=0563675L598OBU3N&crtDt="+strToday);
+            strTrafficInfoYesterday = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=0563675L598OBU3N&crtDt="+strYesterday);
 
             // 두 JSON 데이터를 하나로 합치기
             JsonObject combinedJson = new JsonObject();
@@ -75,8 +75,8 @@ public class EmergencyInterface {
         String strYesterday = sdf.format(System.currentTimeMillis() - 24 * 60 * 60 * 1000);
 
         try {
-            String strEmergencyInfo = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=7DCBUF3EBA0Y6WQ1&crtDt="+strToday);
-            String strEmergencyInfoYesterday = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=7DCBUF3EBA0Y6WQ1&crtDt="+strYesterday);
+            String strEmergencyInfo = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=0563675L598OBU3N&crtDt="+strToday);
+            String strEmergencyInfoYesterday = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00247?serviceKey=0563675L598OBU3N&crtDt="+strYesterday);
             // 두 JSON 데이터를 하나로 합치기
             JsonObject combinedJson = new JsonObject();
             JsonArray emergencyArray = new JsonArray();
