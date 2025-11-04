@@ -27,7 +27,12 @@ fi
 GEMINI_KEY=$(cat $KEY_FILE | tr -d '\n\r')
 echo "✓ Gemini API key loaded from $KEY_FILE"
 
-# Pull latest code from git
+# Reset local changes and pull latest code from git
+echo ""
+echo "Resetting local changes..."
+git reset --hard HEAD
+git clean -fd
+
 echo ""
 echo "Pulling latest code from git..."
 git pull
