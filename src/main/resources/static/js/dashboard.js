@@ -1,7 +1,7 @@
 // 대시보드 요약 데이터를 가져오는 함수
 function fetchDashboardSummary() {
     showLoading();
-    fetch('/api/gemini/dashboard-summary')
+    fetch((window.CTX || '/') + 'api/gemini/dashboard-summary')
         .then(response => {
             if (!response.ok) {
                 throw new Error('대시보드 요약을 불러오는데 실패했습니다.');

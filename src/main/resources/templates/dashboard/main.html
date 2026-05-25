@@ -395,9 +395,13 @@
             font-weight: 600;
         }
     </style>
-    <script type="text/javascript" src="js/jsonParser.js"></script>
-    <script type="text/javascript" src="js/utils.js"></script>
-    <script>
+    <!-- 통합 게이트웨이(/osh) 뒤에서도 동작하도록 context-path 자동 prepend -->
+    <script th:inline="javascript">
+      window.CTX = /*[[@{/}]]*/ '/';
+    </script>
+    <script type="text/javascript" th:src="@{/js/jsonParser.js}" src="/js/jsonParser.js"></script>
+    <script type="text/javascript" th:src="@{/js/utils.js}" src="/js/utils.js"></script>
+    <script th:inline="javascript">
         var eventSource;
         var eventSource1;
         var eventSource2;
@@ -417,7 +421,7 @@
 
         window.addEventListener("load", function () {
                 // Connect to the server
-                eventSource = new EventSource("/dashboard/main/info");
+                eventSource = new EventSource(window.CTX + "dashboard/main/info");
     
                 // Receive messages
                 eventSource.onmessage = function (event) {
@@ -467,7 +471,7 @@
 
             window.addEventListener("load", function () {
                 // Connect to the server
-                eventSource1 = new EventSource("/dashboard/main/traffic");
+                eventSource1 = new EventSource(window.CTX + "dashboard/main/traffic");
 
                 // Receive messages
                 eventSource1.onmessage = function (event) {
@@ -492,7 +496,7 @@
 
             window.addEventListener("load", function () {
                 // Connect to the server
-                eventSource2 = new EventSource("/dashboard/main/emergency");
+                eventSource2 = new EventSource(window.CTX + "dashboard/main/emergency");
 
                 // Receive messages
                 eventSource2.onmessage = function (event) {
@@ -517,7 +521,7 @@
 
             window.addEventListener("load", function () {
                 // Connect to the server
-                eventSource3 = new EventSource("/dashboard/main/yeonhap");
+                eventSource3 = new EventSource(window.CTX + "dashboard/main/yeonhap");
 
                 // Receive messages
                 eventSource3.onmessage = function (event) {
@@ -541,7 +545,7 @@
                     // 5초 후 재연결 시도
                     setTimeout(() => {
                         console.log("Attempting to reconnect to news SSE...");
-                        eventSource3 = new EventSource("/dashboard/main/yeonhap");
+                        eventSource3 = new EventSource(window.CTX + "dashboard/main/yeonhap");
                     }, 5000);
                 };
             }, false);
@@ -556,8 +560,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- Custom Scripts -->
-    <script type="text/javascript" src="js/jsonParser.js"></script>
-    <script type="text/javascript" src="js/main.js"></script>
+    <script type="text/javascript" th:src="@{/js/jsonParser.js}" src="/js/jsonParser.js"></script>
+    <script type="text/javascript" th:src="@{/js/main.js}" src="/js/main.js"></script>
     
     <!-- 모바일 터치 이벤트 지원을 위한 스크립트 -->
     <script>
@@ -584,10 +588,10 @@
     <!-- 네비게이션 바 추가 -->
     <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" href="/">OSH</a>
+            <a class="navbar-brand" th:href="@{/}" href="/">OSH</a>
             <div class="d-flex">
-                <a class="nav-link active" href="/">메인 대시보드</a>
-                <a class="nav-link" href="/dashboard">AI 대시보드</a>
+                <a class="nav-link active" th:href="@{/}" href="/">메인 대시보드</a>
+                <a class="nav-link" th:href="@{/dashboard}" href="/dashboard">AI 대시보드</a>
             </div>
         </div>
     </nav>

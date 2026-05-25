@@ -233,13 +233,17 @@
     </style>
 </head>
 <body>
+    <!-- 통합 게이트웨이(/osh) 뒤에서도 동작하도록 context-path 자동 prepend -->
+    <script th:inline="javascript">
+      window.CTX = /*[[@{/}]]*/ '/';
+    </script>
     <!-- 네비게이션 바 -->
     <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" href="/">OSH</a>
+            <a class="navbar-brand" th:href="@{/}" href="/">OSH</a>
             <div class="d-flex">
-                <a class="nav-link" href="/">메인 대시보드</a>
-                <a class="nav-link active" href="/dashboard">AI 대시보드</a>
+                <a class="nav-link" th:href="@{/}" href="/">메인 대시보드</a>
+                <a class="nav-link active" th:href="@{/dashboard}" href="/dashboard">AI 대시보드</a>
             </div>
         </div>
     </nav>
@@ -281,7 +285,7 @@
         // 대시보드 요약 데이터를 가져오는 함수
         function fetchDashboardSummary() {
             showLoading();
-            fetch('/api/gemini/dashboard-summary')
+            fetch(window.CTX + 'api/gemini/dashboard-summary')
                 .then(response => {
                     if (!response.ok) {
                         return response.text().then(text => {

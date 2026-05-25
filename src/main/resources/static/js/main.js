@@ -1,5 +1,5 @@
 function initializeNews() {
-    const newsEventSource = new EventSource('/api/news/stream');
+    const newsEventSource = new EventSource((window.CTX || '/') + 'api/news/stream');
     
     newsEventSource.onmessage = function(event) {
         const news = JSON.parse(event.data);
