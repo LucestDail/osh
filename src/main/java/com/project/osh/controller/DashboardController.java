@@ -36,9 +36,21 @@ public class DashboardController {
         return new ModelAndView("dashboard/main");
     }
 
+    /**
+     * 1\ucd08 tick: application(\uc2dc\uacc4 / \uba54\ubaa8\ub9ac / load) snapshot.
+     * \uc774\uc804\uc5d0\ub294 \uc774 \uc2a4\ud2b8\ub9bc\uc5d0 19\ub3c4\uc2dc \ub0a0\uc528 + \uad50\ud1b5 + \uc7ac\ub09c + \ub274\uc2a4\uac00 \ud3ec\ud568\ub418\uc5b4 1\ucd08\ub2f9 \uc218\ubc31KB \uac00 \ub098\uac14\ub358 \uc790\ub9ac.
+     */
     @GetMapping(value = "/main/info", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> getMainInfo() {
         return stream("main/info", sinks.dashboardStream());
+    }
+
+    /**
+     * \ub0a0\uc528 \uc804\uc6a9 \uc2a4\ud2b8\ub9bc - 1\uc2dc\uac04\uc5d0 1\ud68c \ubcc0\uacbd\uc774\ubbc0\ub85c \ud3c9\uc18c \ub300\uc5ed\ud3ed \uc81c\ub85c.
+     */
+    @GetMapping(value = "/main/weather", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> getWeatherInfo() {
+        return stream("main/weather", sinks.weatherStream());
     }
 
     @GetMapping(value = "/main/emergency", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

@@ -32,13 +32,19 @@
     }
 
     function start() {
-        // /main/info : weather + application (시계 등) — 1초 tick
+        // /main/info : application 전용 (시계 / 메모리 / 로드) — 1초 tick, 페이로드 ~300B
         SSE.subscribe(ctx + 'dashboard/main/info', {
             onMessage: function (data) {
                 try { window.OSH.application.render(data); } catch (e) { console.error('application render', e); }
-                try { window.OSH.weather.render(data); }     catch (e) { console.error('weather render', e); }
             },
             onStatus: statusBinder('liveMain', '메인')
+        });
+
+        // /main/weather : 19도시 날씨 — 변경 시점에만 (1시간 주기)
+        SSE.subscribe(ctx + 'dashboard/main/weather', {
+            onMessage: function (data) {
+                try { window.OSH.weather.render(data); } catch (e) { console.error('weather render', e); }
+            }
         });
 
         // /main/emergency : 60s

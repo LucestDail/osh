@@ -45,14 +45,16 @@ public class ScheduledTasks {
     }
 
     /**
-     * 1\ucd08 \uc8fc\uae30: \ub300\uc2dc\ubcf4\ub4dc \uc2a4\ub0c5\uc0f7 push.
-     * - applicationJson.currentTime / \uba54\ubaa8\ub9ac / load average \ub4f1 \uc11c\ubc84 \uc9c0\ud45c\ub294 \ud56d\uc0c1 \uc2e4\uc2dc\uac04\uc73c\ub85c \uac31\uc2e0 \ud544\uc694
-     * - \uc678\ubd80 API \ud638\ucd9c \uc5c6\uc774 \uba54\ubaa8\ub9ac \uce90\uc2dc \uc9c1\ub82c\ud654\ub9cc \uc218\ud589 \u2192 \ubd80\ud558 \ubbf8\ubbf8
+     * 1\ucd08 \uc8fc\uae30: application(\uc2dc\uacc4 / \uba54\ubaa8\ub9ac / \ub85c\ub4dc) snapshot \ub9cc push.
+     *
+     * <p>\uc774\uc804\uc5d0\ub294 weather/traffic/emergency/yeonhap \uae4c\uc9c0 \ud3ec\ud568\ud55c \uc804\uccb4 snapshot(\uc57d 750KB)\ub97c
+     * \ub9e4\ucd08 push\ud574\uc11c \ud074\ub77c\uc774\uc5b8\ud2b8\ub2f9 1MB/sec \ub2e4\uc6b4\ub85c\ub4dc\uac00 \ubc1c\uc0dd\ud588\ub2e4.
+     * \uc774\uc81c application wrapper(\uc218\ubc31 B)\ub9cc push \u2192 \ub300\uc5ed\ud3ed 99% \uac10\uc18c.
      */
     @Scheduled(fixedRate = 1_000)
     public void tickDashboard() {
         try {
-            sinks.pushDashboard(dashboardService.getDashboardSnapshot());
+            sinks.pushDashboard(dashboardService.getApplicationWrapperJson());
         } catch (Exception e) {
             log.error("[tick:dashboard] push \uc2e4\ud328: {}", e.getMessage());
         }
