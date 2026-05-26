@@ -179,13 +179,14 @@ public class GeminiService {
                     "\ub2e4\uc74c \uc6b4\uc601 \ub300\uc2dc\ubcf4\ub4dc \uc2a4\ub0c5\uc0f7\uc744 5\uac1c \uce74\ub4dc(weather, air, emergency, traffic, news) \uc6a9 \uc9e7\uc740 \ud55c\uad6d\uc5b4 \uc694\uc57d\uc73c\ub85c \uc555\ucd95\ud574\uc8fc\uc138\uc694.\n" +
                     "\uaddc\uce59:\n" +
                     "1. \uc774\ubaa8\uc9c0/\uba38\ub9ac\ub9d0 \uc5c6\uc774 \uac01 \ud56d\ubaa9 1\u20132\ubb38\uc7a5(\ucd5c\ub300 80\uc790).\n" +
-                    "2. \ub0a0\uc528\ub294 \ud2b9\uc774 \uc9c0\uc5ed/\uae30\uc628/\uac15\uc218 \uc911\uc2ec, \uc628\ub3c4\ub294 \uc12d\uc528 \uadf8\ub300\ub85c \ud45c\uae30(K \uba85\uc2dc \uae08\uc9c0).\n" +
-                    "3. air \ub294 \ub300\uae30\uc9c8 \uc18d \ucd5c\uc545 \uc9c0\uc5ed\uacfc \uc804\ubc18\uc801 \ub4f1\uae09.\n" +
-                    "4. \uc7ac\ub09c/\uad50\ud1b5\uc740 \ud604\uc2dc\uc810 \uc8fc\uc694 \uc774\uc288 \ud55c\ub450\uac1c.\n" +
-                    "5. \ub274\uc2a4\ub294 \uc624\ub298 \ud575\uc2ec \ud0a4\uc6cc\ub4dc\uc640 \ud750\ub984.\n" +
-                    "6. \ubc18\ub4dc\uc2dc \uc544\ub798 \uc2a4\ud0a4\ub9c8\uc758 \uc21c\uc218 JSON \ub9cc \ucd9c\ub825 (\ucf54\ub4dc\ud3f0\uc2a4 \uae08\uc9c0):\n" +
+                    "2. weather \ub370\uc774\ud130\uc758 main.temp \uac12\uc740 \uc910\ub300\uc628\ub3c4(K) \uc774\ubbc0\ub85c \ubc18\ub4dc\uc2dc -273 \ud574\uc11c \uc12d\uc528\ub85c \ubcc0\ud658\ud574\uc11c\ub9cc \ud45c\uae30(\uc608: 298 \u2192 \"25\ub3c4\"). 'K', 'kelvin', '300K' \uac19\uc740 \uc6d0\ubcc0\ud658 \ud45c\uae30 \uc808\ub300 \uae08\uc9c0.\n" +
+                    "3. \ub0a0\uc528\ub294 \ud2b9\uc774 \uc9c0\uc5ed/\uae30\uc628/\uac15\uc218 \uc911\uc2ec\uc73c\ub85c 1\ubb38\uc7a5.\n" +
+                    "4. air \ub294 \uac00\uc7a5 \ub098\uc05c \uc2dc\ub3c4 1\u20132\uacf3\uacfc \uc804\ubc18\uc801 \ub4f1\uae09\ub9cc.\n" +
+                    "5. \uc7ac\ub09c/\uad50\ud1b5\uc740 \ud604\uc2dc\uc810 \uc8fc\uc694 \uc774\uc288 \ud55c\ub450\uac1c.\n" +
+                    "6. \ub274\uc2a4\ub294 \uc624\ub298 \ud575\uc2ec \ud0a4\uc6cc\ub4dc\uc640 \ud750\ub984.\n" +
+                    "7. \ubc18\ub4dc\uc2dc \uc544\ub798 \uc2a4\ud0a4\ub9c8\uc758 \uc21c\uc218 JSON \ub9cc \ucd9c\ub825 (\ucf54\ub4dc\ud3f0\uc2a4 \uae08\uc9c0):\n" +
                     "{\"weather\":\"...\",\"air\":\"...\",\"emergency\":\"...\",\"traffic\":\"...\",\"news\":\"...\"}\n\n" +
-                    "[weather wrapper]\n" + weatherCache + "\n\n" +
+                    "[weather wrapper] (main.temp \ub294 K, \uba3c\uc800 \uc12d\uc528\ub85c \ubcc0\ud658 \ud6c4 \uc4f8 \uac83)\n" + weatherCache + "\n\n" +
                     "[air wrapper]\n" + airCache + "\n\n" +
                     "[emergency wrapper]\n" + emergencyCache + "\n\n" +
                     "[traffic wrapper]\n" + trafficCache + "\n\n" +

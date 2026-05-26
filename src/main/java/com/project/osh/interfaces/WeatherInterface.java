@@ -83,17 +83,17 @@ public class WeatherInterface {
     }
 
     /**
-     * \uae30\uc0c1\uccad \ub2e8\uae30\uc608\ubcf4 \uad6c\uac04\uc740 \ubc1c\ud45c \uc644\ub8cc \ud6c4 \uc57d 10\ubd84 \uc774\ud6c4\ubd80\ud130 \uc751\ub2f5\ud574\uc11c
-     * \uba85\ud655\ud788 \uc774\uc804 \ubc1c\ud45c\uc2dc\uac01\uc744 \uc120\ud0dd\ud55c\ub2e4. (\ucd5c\uc18c\ud55c \ud604\uc7ac\ucc28-1 \ubc1c\ud45c).
+     * \uae30\uc0c1\uccad \ub2e8\uae30\uc608\ubcf4 \uad6c\uac04\uc740 \ubc1c\ud45c \uc644\ub8cc \ud6c4 \uc57d 10\ubd84 \uc774\ud6c4\ubd80\ud130 \uc751\ub2f5\ud558\ub294\ub370,
+     * \uc6b4\uc601 \uc548\uc815\uc131\uc744 \uc704\ud574 45\ubd84 \ub9c8\uc9c4 \uc801\uc6a9 (\ubc1c\ud45c \uc9c1\ud6c4 \uc77c\uc2dc 401/no-data \ud68c\ud53c).
      */
     private String[] computeBaseDateTime() {
-        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul")).minusMinutes(15);
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul")).minusMinutes(45);
         int hour = now.getHour();
-        int base = 2;
+        int base = -1;
         for (int h : KMA_BASE_HOURS) {
             if (hour >= h) { base = h; break; }
         }
-        if (hour < 2) {
+        if (base < 0) {
             now = now.minusDays(1);
             base = 23;
         }
