@@ -159,23 +159,16 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
     border-color: var(--color-border) !important;
 }
 
+/* === 지도 마커 공통 === */
 .osh-mk {
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-family: var(--font-sans); font-weight: 600;
-    border-radius: 999px; box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    border-radius: 999px; box-shadow: 0 1px 5px rgba(0,0,0,0.4);
     user-select: none;
 }
-.osh-mk--weather { width: 46px; height: 28px; gap: 3px; padding: 0 6px; border-radius: 14px; position: relative; }
-.osh-mk__t { font-size: 10px; font-family: var(--font-mono); line-height: 1; }
-.osh-mk__n { font-size: 8px;  opacity: 0.9; line-height: 1; }
-.osh-mk__dot {
-    position: absolute; top: -3px; right: -3px;
-    width: 8px; height: 8px; border-radius: 50%;
-    border: 1.5px solid var(--color-bg-elev);
-    box-shadow: 0 0 3px rgba(0,0,0,0.3);
-}
 
-.osh-mk--emr { width: 14px; height: 14px; position: relative; }
+/* 재난 마커 */
+.osh-mk--emr { width: 16px; height: 16px; position: relative; }
 .osh-mk--emr-info    { background: var(--color-info); }
 .osh-mk--emr-warning { background: var(--color-warning); }
 .osh-mk--emr-danger  { background: var(--color-danger); }
@@ -185,18 +178,27 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
     0%   { transform: scale(0.7); opacity: 0.55; }
     100% { transform: scale(1.6); opacity: 0; }
 }
-.osh-mk--traffic { width: 10px; height: 10px; background: rgba(217,76,76,0.85); font-size: 8px; }
 
+/* 교통 마커 (크게) */
+.osh-mk--traffic {
+    width: 22px; height: 22px;
+    background: rgba(217,76,76,0.9);
+    font-size: 13px;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.45);
+}
+
+/* 뉴스 마커 */
 .osh-mk--news {
-    width: 16px; height: 16px;
+    width: 18px; height: 18px;
     background: rgba(99,102,241,0.95);
-    font-size: 9px; color: #fff;
+    font-size: 10px; color: #fff;
     border: 1.5px solid var(--color-bg-elev);
 }
-.osh-mk--news .osh-mk__n { font-size: 9px; opacity: 1; font-weight: 700; }
 
+/* === popup (클릭) === */
 .osh-popup { font-size: var(--fs-xs); color: var(--color-fg); max-width: 280px; }
 .osh-popup b { font-size: var(--fs-sm); display: block; margin-bottom: 4px; color: var(--color-fg); }
+.osh-popup div { margin-bottom: 2px; }
 .osh-popup__time { color: var(--color-fg-muted); font-family: var(--font-mono); font-size: 10px; margin-bottom: 4px; }
 .osh-popup__list { margin: 4px 0 0 0; padding-left: 16px; }
 .osh-popup__list li { margin-bottom: 4px; line-height: 1.35; }
@@ -206,6 +208,52 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
     background: var(--color-bg-elev) !important;
     color: var(--color-fg) !important;
     box-shadow: var(--shadow-2) !important;
+}
+
+/* === 시도 hover 툴팁 === */
+.leaflet-tooltip.osh-province-tooltip {
+    background: var(--color-bg-elev) !important;
+    color: var(--color-fg) !important;
+    border: 1px solid var(--color-border) !important;
+    box-shadow: var(--shadow-2) !important;
+    font-family: var(--font-sans);
+    font-size: var(--fs-xs);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    pointer-events: none;
+    max-width: 220px;
+}
+
+/* === 온도 범례 === */
+.osh-legend {
+    background: var(--color-bg-elev);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    color: var(--color-fg);
+    box-shadow: var(--shadow-2);
+    line-height: 1.4;
+}
+.osh-legend__title {
+    font-weight: 600;
+    font-size: var(--fs-xs);
+    margin-bottom: 6px;
+    color: var(--color-fg);
+}
+.osh-legend__row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+}
+.osh-legend__row i {
+    width: 18px; height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    display: block;
+    border: 1px solid rgba(0,0,0,0.15);
 }
 
 /* === AI split (한줄 브리핑) === */

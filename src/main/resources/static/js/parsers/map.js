@@ -1,15 +1,18 @@
 /**
  * 전국 지도 파서 (Leaflet)
- *  - 19도시 기온 마커 (색상 = 기온 구간)
- *  - 재난문자 지역 펄스 마커 (regions.json 매핑)
- *  - 교통돌발 좌표 마커 (ITS payload coordX/coordY)
+ *  - 시도별 기온 코로플레스 (GeoJSON 지역 색칠, hover 시 기상+대기질)
+ *  - 재난문자 지역 펄스 마커
+ *  - 교통돌발 좌표 마커
+ *  - 뉴스 지명 키워드 매칭 마커
+ *  - 온도 범례 (지도 좌하단)
  *
- * 다크/라이트 모드 전환 시 tile 자동 교체.
- *
- * 노출 API
+ * API
  *   window.OSH.map.renderWeather(weatherWrapperStr)
  *   window.OSH.map.renderEmergency(emergencyWrapperStr)
  *   window.OSH.map.renderTraffic(trafficWrapperStr)
+ *   window.OSH.map.renderNews(newsWrapperStr)
+ *   window.OSH.map.setAirGrades(gradesByCity)
+ *   window.OSH.map.setAirInfo(infoByCity)
  */
 (function () {
     'use strict';
@@ -22,12 +25,42 @@
 
     let map = null;
     let tileLayer = null;
-    let weatherLayer = null;
+    let choroplethLayer = null;   // 기온 코로플레스 (GeoJSON)
     let emergencyLayer = null;
     let trafficLayer = null;
     let newsLayer = null;
-    let regionMap = null; // { sido: {...}, sigungu: {...} }
+    let _provinceLayerMap = {};   // provinceName → Leaflet layer
+
+    let regionMap = null;
     let regionMapPromise = null;
+    let provincesData = null;     // kr-provinces GeoJSON
+    let provincesPromise = null;
+
+    // 데이터 캐시
+    let _weatherByCity = {};    // cityName → { tempC, humidity, windSpeed, description }
+    let _airGradeByCity = {};   // cityName → grade string
+    let _airInfoByCity = {};    // cityName → { grade, pm10, pm25, label }
+
+    // 시도 → 대표 도시 매핑 (여러 도시는 온도 평균, 툴팁은 첫번째 도시)
+    const PROVINCE_CITIES = {
+        '서울특별시':      ['서울'],
+        '부산광역시':      ['부산'],
+        '대구광역시':      ['대구'],
+        '인천광역시':      ['인천'],
+        '광주광역시':      ['광주'],
+        '대전광역시':      ['대전'],
+        '울산광역시':      ['울산'],
+        '세종특별자치시':  ['대전'],
+        '경기도':         ['수원', '고양', '용인'],
+        '강원도':         ['춘천', '원주', '강릉', '속초'],
+        '충청북도':       ['대전'],
+        '충청남도':       ['대전'],
+        '전라북도':       ['광주'],
+        '전라남도':       ['광주'],
+        '경상북도':       ['포항', '김천'],
+        '경상남도':       ['창원', '김해'],
+        '제주특별자치도': ['제주']
+    };
 
     function isDark() {
         const explicit = document.documentElement.getAttribute('data-theme');
@@ -36,16 +69,14 @@
         return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
 
-    // 19도시가 가장 잘 보이는 본토 중심 bbox (제주는 별도 마커가 잘리지 않을 만큼만 살짝 포함)
-    //   SW=[34.6, 126.4], NE=[38.4, 129.6] → 서울~부산 본토 + 강원동해안
-    const KR_BOUNDS = [[34.6, 126.4], [38.4, 129.6]];
-    const MAX_FIT_ZOOM = 10;
+    // 제주 포함 전국 bbox
+    const KR_BOUNDS = [[33.0, 125.0], [38.9, 130.2]];
+    const MAX_FIT_ZOOM = 9;
 
     function fitToKorea() {
         if (!map) return;
-        try {
-            map.fitBounds(KR_BOUNDS, { padding: [4, 4], maxZoom: MAX_FIT_ZOOM, animate: false });
-        } catch (e) { /* noop */ }
+        try { map.fitBounds(KR_BOUNDS, { padding: [4, 4], maxZoom: MAX_FIT_ZOOM, animate: false }); }
+        catch (e) { /* noop */ }
     }
 
     function ensureMap() {
@@ -60,38 +91,42 @@
             scrollWheelZoom: false,
             zoomSnap: 0.25,
             maxZoom: 14,
-            minZoom: 6
+            minZoom: 5
         });
         fitToKorea();
 
-        // 카드 사이즈가 처음 0 으로 잡힐 수 있어 한번 재계산
         setTimeout(function () {
             try { map.invalidateSize(); fitToKorea(); } catch (e) { /* noop */ }
         }, 250);
-        // window resize 대응
         window.addEventListener('resize', function () {
             if (!map) return;
             try { map.invalidateSize(); fitToKorea(); } catch (e) { /* noop */ }
         });
 
         applyTile();
-        weatherLayer   = L.layerGroup().addTo(map);
         emergencyLayer = L.layerGroup().addTo(map);
         trafficLayer   = L.layerGroup().addTo(map);
         newsLayer      = L.layerGroup().addTo(map);
+
+        buildLegend();
         return map;
     }
 
     function applyTile() {
         if (!map) return;
-        if (tileLayer) {
-            try { map.removeLayer(tileLayer); } catch (e) { /* noop */ }
-        }
+        if (tileLayer) { try { map.removeLayer(tileLayer); } catch (e) { /* noop */ } }
         tileLayer = L.tileLayer(isDark() ? TILE_DARK : TILE_LIGHT, {
             attribution: TILE_ATTR,
             subdomains: 'abcd',
             maxZoom: 18
         }).addTo(map);
+        // choropleth 을 타일 위, 마커 아래에 배치
+        if (choroplethLayer) {
+            choroplethLayer.bringToBack();
+            emergencyLayer.bringToFront();
+            trafficLayer.bringToFront();
+            newsLayer.bringToFront();
+        }
     }
 
     function loadRegions() {
@@ -104,137 +139,217 @@
         return regionMapPromise;
     }
 
-    function tempColor(t) {
-        if (t == null || isNaN(t)) return '#888';
-        if (t <= -10) return '#3b82f6';
-        if (t <= 0)   return '#60a5fa';
-        if (t <= 10)  return '#22d3ee';
-        if (t <= 20)  return '#10b981';
-        if (t <= 25)  return '#facc15';
-        if (t <= 30)  return '#f97316';
-        return '#ef4444';
+    function loadProvinces() {
+        if (provincesData) return Promise.resolve(provincesData);
+        if (provincesPromise) return provincesPromise;
+        provincesPromise = fetch(CTX + 'data/kr-provinces.json')
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (j) { provincesData = j; return j; })
+            .catch(function (e) { console.warn('kr-provinces.json 로드 실패', e); return null; });
+        return provincesPromise;
     }
 
-    function airBorderColor(grade) {
-        switch (String(grade || '')) {
-            case '1': return '#1aa37a';
-            case '2': return '#3b82f6';
-            case '3': return '#f97316';
-            case '4': return '#ef4444';
-            default:  return 'transparent';
+    /* ========== 온도 색상 ========== */
+
+    function tempToFillColor(tempC) {
+        if (tempC == null || isNaN(tempC)) return isDark() ? '#2a2a2a' : '#ddd';
+        if (tempC <= 0)   return '#4575b4';
+        if (tempC <= 5)   return '#74add1';
+        if (tempC <= 10)  return '#abd9e9';
+        if (tempC <= 15)  return '#e0f3f8';
+        if (tempC <= 20)  return '#a8d990';
+        if (tempC <= 25)  return '#fee090';
+        if (tempC <= 30)  return '#fdae61';
+        return '#d73027';
+    }
+
+    function getProvinceTempC(name) {
+        const cities = PROVINCE_CITIES[name] || [];
+        const temps = [];
+        cities.forEach(function (c) {
+            const d = _weatherByCity[c];
+            if (d && d.tempC != null) temps.push(d.tempC);
+        });
+        if (!temps.length) return null;
+        return temps.reduce(function (a, b) { return a + b; }, 0) / temps.length;
+    }
+
+    /* ========== 코로플레스 ========== */
+
+    function provinceBaseStyle(feature) {
+        const tempC = getProvinceTempC(feature.properties.name);
+        return {
+            fillColor: tempToFillColor(tempC),
+            fillOpacity: 0.6,
+            weight: 1,
+            color: isDark() ? '#666' : '#aaa',
+            opacity: 0.9
+        };
+    }
+
+    function buildTooltipHtml(provinceName) {
+        const cities = PROVINCE_CITIES[provinceName] || [];
+        const primaryCity = cities[0];
+        const wd = primaryCity ? _weatherByCity[primaryCity] : null;
+        const ai = primaryCity ? _airInfoByCity[primaryCity] : null;
+
+        let html = '<div class="osh-popup"><b>' + H.esc(provinceName) + '</b>';
+        if (primaryCity && primaryCity !== provinceName.replace(/(특별시|광역시|특별자치시|특별자치도|도)/, '')) {
+            html += '<div class="osh-popup__time">' + H.esc(primaryCity) + ' 기준</div>';
+        }
+        if (wd) {
+            html += '<div>기온 ' + wd.tempC.toFixed(1) + '°C</div>';
+            if (wd.humidity != null) html += '<div>습도 ' + wd.humidity + '%</div>';
+            if (wd.windSpeed != null) html += '<div>바람 ' + wd.windSpeed.toFixed(1) + ' m/s</div>';
+            if (wd.description) html += '<div>' + H.esc(wd.description) + '</div>';
+        } else {
+            html += '<div>날씨 정보 없음</div>';
+        }
+        if (ai) {
+            const parts = [];
+            if (ai.label) parts.push(ai.label);
+            if (ai.pm10 != null && ai.pm10 >= 0) parts.push('PM10 ' + ai.pm10 + 'µg');
+            if (ai.pm25 != null && ai.pm25 >= 0) parts.push('PM2.5 ' + ai.pm25 + 'µg');
+            if (parts.length) html += '<div>대기질 ' + H.esc(parts.join(' · ')) + '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    function updateChoroplethStyles() {
+        if (!choroplethLayer) return;
+        Object.keys(_provinceLayerMap).forEach(function (name) {
+            const layer = _provinceLayerMap[name];
+            const tempC = getProvinceTempC(name);
+            layer.setStyle({
+                fillColor: tempToFillColor(tempC),
+                fillOpacity: 0.6,
+                weight: 1,
+                color: isDark() ? '#666' : '#aaa',
+                opacity: 0.9
+            });
+            layer.unbindTooltip();
+            layer.bindTooltip(buildTooltipHtml(name), {
+                sticky: true,
+                opacity: 1,
+                className: 'osh-province-tooltip'
+            });
+        });
+    }
+
+    function initChoropleth(geojson) {
+        if (!map) return;
+        if (choroplethLayer) {
+            try { map.removeLayer(choroplethLayer); } catch (e) { /* noop */ }
+        }
+        _provinceLayerMap = {};
+
+        choroplethLayer = L.geoJSON(geojson, {
+            style: provinceBaseStyle,
+            onEachFeature: function (feature, layer) {
+                const name = feature.properties.name;
+                _provinceLayerMap[name] = layer;
+
+                layer.bindTooltip(buildTooltipHtml(name), {
+                    sticky: true,
+                    opacity: 1,
+                    className: 'osh-province-tooltip'
+                });
+
+                layer.on('mouseover', function () {
+                    layer.setStyle({ weight: 2.5, color: isDark() ? '#ddd' : '#333', fillOpacity: 0.8 });
+                });
+                layer.on('mouseout', function () {
+                    choroplethLayer.resetStyle(layer);
+                });
+            }
+        });
+
+        choroplethLayer.addTo(map);
+        // 마커 레이어들을 choropleth 위에 배치
+        emergencyLayer.bringToFront();
+        trafficLayer.bringToFront();
+        newsLayer.bringToFront();
+    }
+
+    /* ========== 온도 범례 ========== */
+
+    function buildLegend() {
+        if (!map) return;
+        const legend = L.control({ position: 'bottomleft' });
+        legend.onAdd = function () {
+            const div = L.DomUtil.create('div', 'osh-legend');
+            const bands = [
+                ['#4575b4', '0°C 이하'],
+                ['#74add1', '0 – 5°C'],
+                ['#abd9e9', '5 – 10°C'],
+                ['#e0f3f8', '10 – 15°C'],
+                ['#a8d990', '15 – 20°C'],
+                ['#fee090', '20 – 25°C'],
+                ['#fdae61', '25 – 30°C'],
+                ['#d73027', '30°C 이상']
+            ];
+            div.innerHTML =
+                '<div class="osh-legend__title">🌡 기온</div>' +
+                bands.map(function (b) {
+                    return '<div class="osh-legend__row">' +
+                        '<i style="background:' + b[0] + '"></i>' +
+                        '<span>' + b[1] + '</span>' +
+                        '</div>';
+                }).join('');
+            return div;
+        };
+        legend.addTo(map);
+    }
+
+    /* ========== 날씨 렌더 (코로플레스 업데이트) ========== */
+
+    function renderWeather(strJson) {
+        const wrapper = H.unwrap(strJson, 'weatherJson');
+        if (!wrapper) return;
+
+        _weatherByCity = {};
+        Object.keys(wrapper).forEach(function (k) {
+            const payload = H.safeParse(wrapper[k]);
+            if (!payload || !payload.main) return;
+            const name = payload.cityName || payload.name || k;
+            const tempK = payload.main.temp;
+            _weatherByCity[name] = {
+                tempC: typeof tempK === 'number' ? tempK - 273.15 : null,
+                humidity: payload.main.humidity,
+                windSpeed: payload.wind ? payload.wind.speed : null,
+                description: payload.weather && payload.weather[0] ? payload.weather[0].description : null
+            };
+        });
+
+        if (!ensureMap()) return;
+
+        if (!provincesData) {
+            loadProvinces().then(function (geojson) {
+                if (geojson) initChoropleth(geojson);
+            });
+        } else if (!choroplethLayer) {
+            initChoropleth(provincesData);
+        } else {
+            updateChoroplethStyles();
         }
     }
 
-    function weatherDivIcon(cityName, tempC, airGrade) {
-        const fill = tempColor(tempC);
-        const ring = airBorderColor(airGrade);
-        const t = (tempC == null || isNaN(tempC)) ? '?' : tempC.toFixed(0) + '°';
-        const ringStyle = ring === 'transparent' ? '' : '; box-shadow:0 0 0 2px ' + ring;
-        const dot = (ring === 'transparent')
-            ? ''
-            : '<span class="osh-mk__dot" style="background:' + ring + '"></span>';
-        const html =
-            '<div class="osh-mk osh-mk--weather" style="background:' + fill + ringStyle + '">' +
-                '<span class="osh-mk__t">' + t + '</span>' +
-                '<span class="osh-mk__n">' + H.esc(cityName) + '</span>' +
-                dot +
-            '</div>';
-        return L.divIcon({
-            className: '',
-            html: html,
-            iconSize: [46, 28],
-            iconAnchor: [23, 14]
-        });
+    function setAirGrades(g) { _airGradeByCity = g || {}; }
+    function setAirInfo(info) {
+        _airInfoByCity = info || {};
+        updateChoroplethStyles(); // 대기질 업데이트 시 즉시 tooltip 갱신
     }
 
-    function emergencyDivIcon(level) {
-        const cls = 'osh-mk osh-mk--emr osh-mk--emr-' + (level || 'info');
-        return L.divIcon({
-            className: '',
-            html: '<div class="' + cls + '"><span class="osh-mk__pulse"></span></div>',
-            iconSize: [14, 14],
-            iconAnchor: [7, 7]
-        });
-    }
-
-    function trafficDivIcon() {
-        return L.divIcon({
-            className: '',
-            html: '<div class="osh-mk osh-mk--traffic">⚠</div>',
-            iconSize: [10, 10],
-            iconAnchor: [5, 5]
-        });
-    }
-
-    function newsDivIcon(count) {
-        const label = (count && count > 1) ? String(count) : '';
-        return L.divIcon({
-            className: '',
-            html: '<div class="osh-mk osh-mk--news">' + (label ? '<span class="osh-mk__n">' + label + '</span>' : '📰') + '</div>',
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
-        });
-    }
-
-    /* ---------- weather ---------- */
-
-    // air 정보 별도 보관 (renderWeather 가 그릴 때 적용)
-    let airGradeByCity = {}; // { 서울: '2', 부산: '3', ... }   ← 마커 dot/외곽선 색
-    let airInfoByCity  = {}; // { 서울: { grade, pm10, pm25, label } } ← popup 상세
-    function setAirGrades(g) { airGradeByCity = g || {}; }
-    function setAirInfo(info) { airInfoByCity = info || {}; }
-
-    function airText(name) {
-        const i = airInfoByCity[name];
-        if (!i) return '';
-        const parts = [];
-        if (i.label) parts.push(i.label);
-        if (i.pm10 != null && i.pm10 >= 0) parts.push('PM10 ' + i.pm10 + 'µg');
-        if (i.pm25 != null && i.pm25 >= 0) parts.push('PM2.5 ' + i.pm25 + 'µg');
-        if (!parts.length) return '';
-        return '<div>대기 ' + H.esc(parts.join(' · ')) + '</div>';
-    }
-
-    function renderWeather(strJson) {
-        if (!ensureMap()) return;
-        const wrapper = H.unwrap(strJson, 'weatherJson');
-        if (!wrapper) return;
-        weatherLayer.clearLayers();
-        Object.keys(wrapper).forEach(function (k) {
-            const payload = H.safeParse(wrapper[k]);
-            if (!payload || !payload.coord || !payload.main) return;
-            const lat = payload.coord.lat;
-            const lon = payload.coord.lon;
-            const name = payload.cityName || payload.name || '-';
-            const tempK = payload.main.temp;
-            const tempC = (typeof tempK === 'number') ? (tempK - 273.15) : null;
-            const air = airGradeByCity[name];
-            const m = L.marker([lat, lon], { icon: weatherDivIcon(name, tempC, air) });
-            const popupHtml =
-                '<div class="osh-popup"><b>' + H.esc(name) + '</b>' +
-                '<div>기온 ' + (tempC == null ? '-' : tempC.toFixed(1)) + '°C</div>' +
-                '<div>습도 ' + (payload.main.humidity || '-') + '%</div>' +
-                '<div>바람 ' + (payload.wind && payload.wind.speed != null ? payload.wind.speed + ' m/s' : '-') + '</div>' +
-                airText(name) +
-                '</div>';
-            m.bindPopup(popupHtml);
-            m.addTo(weatherLayer);
-        });
-    }
-
-    /* ---------- emergency ---------- */
+    /* ========== 재난 마커 ========== */
 
     function lookupRegionCoord(rgnName) {
         if (!rgnName || !regionMap) return null;
         const parts = String(rgnName).split(/\s+|,|\//).filter(Boolean);
-        // sigungu 우선 탐색 (더 구체적)
         for (let i = parts.length - 1; i >= 0; i--) {
             const p = parts[i];
             if (regionMap.sigungu && regionMap.sigungu[p]) return regionMap.sigungu[p];
             if (regionMap.sido && regionMap.sido[p]) return regionMap.sido[p];
-            // 마지막 글자 단축 보정 ("종로구 일대" -> "종로구")
-            const trimmed = p.replace(/(시|구|군|도)$/, function (s) { return s; });
-            if (regionMap.sigungu && regionMap.sigungu[trimmed]) return regionMap.sigungu[trimmed];
         }
         return null;
     }
@@ -244,6 +359,16 @@
         if (s.includes('심각') || s.includes('위기')) return 'danger';
         if (s.includes('경계') || s.includes('주의')) return 'warning';
         return 'info';
+    }
+
+    function emergencyDivIcon(level) {
+        const cls = 'osh-mk osh-mk--emr osh-mk--emr-' + (level || 'info');
+        return L.divIcon({
+            className: '',
+            html: '<div class="' + cls + '"><span class="osh-mk__pulse"></span></div>',
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+        });
     }
 
     function renderEmergency(strJson) {
@@ -271,7 +396,16 @@
         });
     }
 
-    /* ---------- traffic ---------- */
+    /* ========== 교통 마커 ========== */
+
+    function trafficDivIcon() {
+        return L.divIcon({
+            className: '',
+            html: '<div class="osh-mk osh-mk--traffic">⚠</div>',
+            iconSize: [22, 22],
+            iconAnchor: [11, 11]
+        });
+    }
 
     function renderTraffic(strJson) {
         if (!ensureMap()) return;
@@ -285,8 +419,6 @@
             const x = parseFloat(it.coordX);
             const y = parseFloat(it.coordY);
             if (isNaN(x) || isNaN(y)) continue;
-            // ITS coord 형식: (경도, 위도) 또는 (위도, 경도) 케이스 분기
-            //  - x > 100 이면 경도 (한반도 124~132)
             const lat = (x > 100 && x < 140) ? y : x;
             const lon = (x > 100 && x < 140) ? x : y;
             if (lat < 33 || lat > 39 || lon < 124 || lon > 132) continue;
@@ -301,39 +433,34 @@
         }
     }
 
-    /* ---------- news ---------- */
+    /* ========== 뉴스 마커 ========== */
 
-    // sido 단축형은 false positive 가 많아 단어 경계 매칭. sigungu/full-name 은 contains.
-    // 키 길이 우선순위: 긴 키 먼저 매칭 → 같은 뉴스에서 더 구체적인 지역만 잡힘
     const SIDO_SHORT_TOKENS = ['서울','부산','대구','인천','광주','대전','울산','세종','경기','강원','충북','충남','전북','전남','경북','경남','제주'];
 
     function buildRegionIndex() {
-        const long = []; // {key, coord, kind:'sido'|'sigungu'}
-        const shortSido = []; // {key, coord}
+        const long = [];
+        const shortSido = [];
         if (!regionMap) return { long: long, shortSido: shortSido };
         Object.keys(regionMap.sido || {}).forEach(function (k) {
             if (SIDO_SHORT_TOKENS.indexOf(k) >= 0) {
                 shortSido.push({ key: k, coord: regionMap.sido[k] });
             } else {
-                long.push({ key: k, coord: regionMap.sido[k], kind: 'sido' });
+                long.push({ key: k, coord: regionMap.sido[k] });
             }
         });
         Object.keys(regionMap.sigungu || {}).forEach(function (k) {
-            long.push({ key: k, coord: regionMap.sigungu[k], kind: 'sigungu' });
+            long.push({ key: k, coord: regionMap.sigungu[k] });
         });
         long.sort(function (a, b) { return b.key.length - a.key.length; });
         return { long: long, shortSido: shortSido };
     }
 
-    // 단축 시도명은 앞뒤가 한글 글자가 아닌 경우(공백/구두점/문장끝 등)에만 매칭 → "서울"은 매칭, "서울대공원"은 매칭 안됨
     function shortSidoMatches(text, key) {
         if (!text) return false;
-        // (?:^|[^가-힣]) key (?:[^가-힣]|$)
         const re = new RegExp('(?:^|[^가-힣])' + key + '(?:[^가-힣]|$)');
         return re.test(text);
     }
 
-    // 뉴스 1건에서 가장 먼저 매칭되는 지역 한 곳만 채택 (longest-first)
     function findRegionForNews(title, idx) {
         if (!title) return null;
         for (let i = 0; i < idx.long.length; i++) {
@@ -345,6 +472,16 @@
         return null;
     }
 
+    function newsDivIcon(count) {
+        const label = (count && count > 1) ? String(count) : '📰';
+        return L.divIcon({
+            className: '',
+            html: '<div class="osh-mk osh-mk--news">' + H.esc(label) + '</div>',
+            iconSize: [18, 18],
+            iconAnchor: [9, 9]
+        });
+    }
+
     function renderNews(strJson) {
         if (!ensureMap()) return;
         loadRegions().then(function () {
@@ -354,23 +491,22 @@
             if (!list.length) return;
 
             const idx = buildRegionIndex();
-            const grouped = {}; // key(region) → { coord, items:[news...] }
+            const grouped = {};
             const MAX_SCAN = 50;
             const limit = Math.min(list.length, MAX_SCAN);
             for (let i = 0; i < limit; i++) {
                 const n = list[i] || {};
-                const title = (n.title || '') + ' ' + (n.summary || '');
-                const hit = findRegionForNews(title, idx);
+                const text = (n.title || '') + ' ' + (n.summary || '');
+                const hit = findRegionForNews(text, idx);
                 if (!hit) continue;
                 if (!grouped[hit.key]) grouped[hit.key] = { coord: hit.coord, items: [] };
                 if (grouped[hit.key].items.length < 5) grouped[hit.key].items.push(n);
             }
 
-            const keys = Object.keys(grouped).slice(0, 12);
-            keys.forEach(function (k) {
+            Object.keys(grouped).slice(0, 12).forEach(function (k) {
                 const g = grouped[k];
                 const m = L.marker(g.coord, { icon: newsDivIcon(g.items.length) });
-                const top = g.items.slice(0, 3).map(function (it) {
+                const rows = g.items.slice(0, 3).map(function (it) {
                     const time = it.pubDate ? H.formatDateTime(it.pubDate) : '';
                     const link = it.link
                         ? '<a href="' + H.esc(it.link) + '" target="_blank" rel="noopener">' + H.esc(it.title || '-') + '</a>'
@@ -379,7 +515,7 @@
                 }).join('');
                 const popupHtml =
                     '<div class="osh-popup"><b>' + H.esc(k) + ' 관련 뉴스</b>' +
-                    '<ul class="osh-popup__list">' + top + '</ul>' +
+                    '<ul class="osh-popup__list">' + rows + '</ul>' +
                     '</div>';
                 m.bindPopup(popupHtml, { maxWidth: 320 });
                 m.addTo(newsLayer);
@@ -387,13 +523,14 @@
         });
     }
 
-    /* ---------- theme change observer ---------- */
+    /* ========== 테마 감지 ========== */
 
     function watchTheme() {
         const mo = new MutationObserver(function (mutations) {
             for (let i = 0; i < mutations.length; i++) {
                 if (mutations[i].attributeName === 'data-theme') {
                     applyTile();
+                    updateChoroplethStyles();
                     return;
                 }
             }
