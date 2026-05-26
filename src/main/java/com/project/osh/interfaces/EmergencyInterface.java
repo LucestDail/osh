@@ -12,44 +12,57 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.project.osh.util.HttpUtil;
+import com.project.osh.util.ReactiveHttp;
+
+import reactor.core.publisher.Mono;
 
 @Component
 public class EmergencyInterface {
 
     private static final Logger log = LoggerFactory.getLogger(EmergencyInterface.class);
     private static final String SAFETY_EMERGENCY_URL = "https://www.safetydata.go.kr/V2/api/DSSP-IF-00247";
+    private static final String EMPTY_RESPONSE = "{\"items\":[]}";
 
     @Value("${osh.api.safety-emergency.key}")
     private String apiKey;
 
-    private final HttpUtil http;
+    private final ReactiveHttp http;
 
-    public EmergencyInterface(HttpUtil http) {
+    public EmergencyInterface(ReactiveHttp http) {
         this.http = http;
     }
 
     public String getEmergencyInfo() {
-        // SimpleDateFormat \uc740 thread-safe \ud558\uc9c0 \uc54a\uc544 \ub9e4 \ud638\ucd9c\uc5d0\uc11c \uc0dd\uc131.
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         sdf.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
         String strToday = sdf.format(System.currentTimeMillis());
         String strYesterday = sdf.format(System.currentTimeMillis() - 24L * 60 * 60 * 1000);
 
+        // \uc624\ub298 + \uc5b4\uc81c \ub3d9\uc2dc \uc870\ud68c \ud6c4 \ud569\uce58\uae30
         try {
-            String today = http.executeGet(SAFETY_EMERGENCY_URL + "?serviceKey=" + apiKey + "&crtDt=" + strToday);
-            String yesterday = http.executeGet(SAFETY_EMERGENCY_URL + "?serviceKey=" + apiKey + "&crtDt=" + strYesterday);
+            Mono<String> today = http.get(buildUrl(strToday));
+            Mono<String> yesterday = http.get(buildUrl(strYesterday));
 
-            JsonObject combined = new JsonObject();
-            JsonArray items = new JsonArray();
-            appendBody(items, today);
-            appendBody(items, yesterday);
-            combined.add("items", items);
-            return combined.toString();
+            return Mono.zip(today.defaultIfEmpty(""), yesterday.defaultIfEmpty(""))
+                    .map(tuple -> {
+                        JsonObject combined = new JsonObject();
+                        JsonArray items = new JsonArray();
+                        appendBody(items, tuple.getT1());
+                        appendBody(items, tuple.getT2());
+                        combined.add("items", items);
+                        return combined.toString();
+                    })
+                    .onErrorReturn(EMPTY_RESPONSE)
+                    .blockOptional()
+                    .orElse(EMPTY_RESPONSE);
         } catch (Exception e) {
-            log.error("\uae34\uae09\uc7ac\ub09c\ubb38\uc790 API \ud638\ucd9c \uc911 \uc624\ub958 \ubc1c\uc0dd: {}", e.getMessage());
-            return "{\"items\":[]}";
+            log.error("\uae34\uae09\uc7ac\ub09c\ubb38\uc790 API \ud638\ucd9c \ub54c \uc624\ub958: {}", e.getMessage());
+            return EMPTY_RESPONSE;
         }
+    }
+
+    private String buildUrl(String crtDt) {
+        return SAFETY_EMERGENCY_URL + "?serviceKey=" + apiKey + "&crtDt=" + crtDt;
     }
 
     private void appendBody(JsonArray out, String payload) {

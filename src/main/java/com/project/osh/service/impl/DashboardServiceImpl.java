@@ -4,6 +4,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.TimeZone;
 import java.util.concurrent.CompletableFuture;
 
@@ -16,11 +17,15 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.project.osh.config.OshProperties;
 import com.project.osh.interfaces.InterfaceCore;
+import com.project.osh.interfaces.WeatherInterface;
 import com.project.osh.service.DashboardService;
+import com.project.osh.service.DashboardSinks;
 import com.project.osh.service.NewsService;
 import com.project.osh.util.JsonUtil;
 
 import jakarta.annotation.PostConstruct;
+import reactor.core.publisher.Flux;
+import reactor.util.function.Tuples;
 
 @Service
 public class DashboardServiceImpl implements DashboardService {
@@ -50,15 +55,21 @@ public class DashboardServiceImpl implements DashboardService {
 
     private final NewsService newsService;
     private final InterfaceCore interfaceCore;
+    private final WeatherInterface weatherInterface;
     private final OshProperties properties;
+    private final DashboardSinks sinks;
     private final JsonUtil jsonUtil = new JsonUtil();
 
     public DashboardServiceImpl(NewsService newsService,
                                 InterfaceCore interfaceCore,
-                                OshProperties properties) {
+                                WeatherInterface weatherInterface,
+                                OshProperties properties,
+                                DashboardSinks sinks) {
         this.newsService = newsService;
         this.interfaceCore = interfaceCore;
+        this.weatherInterface = weatherInterface;
         this.properties = properties;
+        this.sinks = sinks;
 
         // \ubd80\ud305 \uc9c0\uc5f0 \ubc29\uc9c0\ub97c \uc704\ud574 \ucea0\uc2dc\ub294 \ube48 \uac1d\uccb4\ub85c \ucd08\uae30\ud654.
         // \uc2e4\uc81c \uc678\ubd80 API \ud638\ucd9c\uc740 @PostConstruct \uc5d0\uc11c \ube44\ub3d9\uae30\ub85c.
@@ -79,6 +90,12 @@ public class DashboardServiceImpl implements DashboardService {
      */
     @PostConstruct
     void initAsync() {
+        // \uc2dc\uc791 \uc9c1\ud6c4 \uad6c\ub3c5\uc790\ub3c4 \ucd5c\ucd08 1\ud68c emit \ubc1b\uc744 \uc218 \uc788\ub3c4\ub85d \ube48 \uac1d\uccb4\ub77c\ub3c4 \uc120\ud589 emit
+        sinks.pushEmergency(emergencyJsonObject);
+        sinks.pushTraffic(trafficJsonObject);
+        sinks.pushYeonhap(yeonhapJsonObject);
+        sinks.pushDashboard(getDashboardJsonObjectNoRenew());
+
         CompletableFuture.runAsync(() -> {
             try {
                 long t0 = System.currentTimeMillis();
@@ -88,10 +105,25 @@ public class DashboardServiceImpl implements DashboardService {
                     log.info("\ucd08\uae30 \ub0a0\uc528 \ub85c\ub4dc \uc644\ub8cc ({} ms, {} cities)",
                             System.currentTimeMillis() - t0, properties.getCities().size());
                 }
+                sinks.pushDashboard(getDashboardJsonObjectNoRenew());
             } catch (Exception e) {
                 log.error("\ucd08\uae30 \ub0a0\uc528 \ub85c\ub4dc \uc2e4\ud328: {}", e.getMessage());
             }
         });
+    }
+
+    /**
+     * \ucea0\uc2dc\ub9cc \ubcf4\uace0 \ub9cc\ub4dc\ub294 dashboard \uad6c\uc870 (\ucea0\uc2dc \uad50\uccb4 \ud2b8\ub9ac\uac70 X).
+     * \uc2dc\uc791 \uc2dc\uc810\uacfc renew \uc774\ud6c4 push \uc6a9.
+     */
+    private JsonObject getDashboardJsonObjectNoRenew() {
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("weatherJson", weatherJsonObject != null ? weatherJsonObject.toString() : "{}");
+        jsonObject.addProperty("trafficJson", trafficJsonObject != null ? trafficJsonObject.toString() : "{}");
+        jsonObject.addProperty("emergencyJson", emergencyJsonObject != null ? emergencyJsonObject.toString() : "{}");
+        jsonObject.addProperty("yeonhapJson", yeonhapJsonObject != null ? yeonhapJsonObject.toString() : "{}");
+        jsonObject.addProperty("applicationJson", getApplicationJsonObject().toString());
+        return jsonObject;
     }
 
     // ===== \uc870\ud68c =====
@@ -178,27 +210,44 @@ public class DashboardServiceImpl implements DashboardService {
         try {
             updateWeatherData();
             lastWeatherUpdate = System.currentTimeMillis();
+            sinks.pushDashboard(getDashboardJsonObjectNoRenew());
         } catch (Exception e) {
             log.error("\ub0a0\uc528 \uc804\uccb4 \uac31\uc2e0 \uc2e4\ud328: {}", e.getMessage());
         }
     }
 
     /**
-     * 19\ub3c4\uc2dc \ub0a0\uc528 \ub3d9\uae30 \uc870\ud68c \u2192 weatherJsonObject \uad50\uccb4.
-     * (\ud5a5\ud6c4 E \uc791\uc5c5\uc5d0\uc11c WebClient \ubcd1\ub82c\ub85c \uad50\uccb4 \uc608\uc815)
+     * 19\ub3c4\uc2dc \ub0a0\uc528 \ubcd1\ub82c \uc870\ud68c \u2192 weatherJsonObject \uad50\uccb4.
+     * WebClient \uae30\ubc18 \ub3d9\uc2dc\u00b719 \ud638\ucd9c. \uc774\uc804: \uc21c\ucc28 \ub3d9\uae30 19\ud68c (\ucd5c\uc545 19\ubd84) \u2192 \ud604\uc7ac \uc57d 8\u20139\ucd08 \uc774\ub0b4.
      */
     private void updateWeatherData() {
         JsonObject next = new JsonObject();
-        int i = 1;
-        for (OshProperties.City city : properties.getCities()) {
-            try {
-                String raw = interfaceCore.getWeatherInfo(city.getLat(), city.getLon());
-                String wjson = jsonUtil.getJson(raw).toString();
-                next.addProperty("weatherJson" + i, wjson);
-            } catch (Exception e) {
-                log.warn("city={} \ub0a0\uc528 \uc870\ud68c \uc2e4\ud328: {}", city.getName(), e.getMessage());
-            }
-            i++;
+        try {
+            Flux.fromIterable(properties.getCities())
+                    .index()
+                    .flatMap(tuple ->
+                            weatherInterface.fetchWeather(tuple.getT2().getLat(), tuple.getT2().getLon())
+                                    .defaultIfEmpty("")
+                                    .map(raw -> Tuples.of(tuple.getT1() + 1, tuple.getT2().getName(), raw))
+                                    .onErrorReturn(Tuples.of(tuple.getT1() + 1, tuple.getT2().getName(), "")),
+                            /* maxConcurrency */ 19)
+                    .toStream()
+                    .forEach(t -> {
+                        long idx = t.getT1();
+                        String raw = t.getT3();
+                        if (raw == null || raw.isBlank()) {
+                            log.warn("city={} \ub0a0\uc528 \uc870\ud68c \ube48 \uc751\ub2f5", t.getT2());
+                            return;
+                        }
+                        try {
+                            String wjson = jsonUtil.getJson(raw).toString();
+                            next.addProperty("weatherJson" + idx, wjson);
+                        } catch (Exception parseEx) {
+                            log.warn("city={} \ub0a0\uc528 \ud30c\uc2f1 \uc2e4\ud328: {}", t.getT2(), parseEx.getMessage());
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("\ub0a0\uc528 \ubcd1\ub82c \uc870\ud68c \uc2e4\ud328: {}", e.getMessage());
         }
         weatherJsonObject = next;
     }
@@ -232,6 +281,8 @@ public class DashboardServiceImpl implements DashboardService {
             String trafficInfo = interfaceCore.getTrafficInfo();
             if (trafficInfo != null && !trafficInfo.trim().isEmpty()) {
                 trafficJsonObject = jsonUtil.getJson(trafficInfo);
+                sinks.pushTraffic(getTrafficWrapperJson());
+                sinks.pushDashboard(getDashboardJsonObjectNoRenew());
             } else {
                 log.warn("\uad50\ud1b5 \uc815\ubcf4\uac00 \ube44\uc5b4\uc788\uc74c. \uae30\uc874 \uce90\uc2dc \uc720\uc9c0");
             }
@@ -269,6 +320,8 @@ public class DashboardServiceImpl implements DashboardService {
             String info = interfaceCore.getEmergencyInfo();
             if (info != null && !info.trim().isEmpty()) {
                 emergencyJsonObject = jsonUtil.getJson(info);
+                sinks.pushEmergency(getEmergencyWrapperJson());
+                sinks.pushDashboard(getDashboardJsonObjectNoRenew());
             } else {
                 log.warn("\uae34\uae09\uc7ac\ub09c \uc815\ubcf4\uac00 \ube44\uc5b4\uc788\uc74c. \uae30\uc874 \uce90\uc2dc \uc720\uc9c0");
             }
@@ -304,6 +357,8 @@ public class DashboardServiceImpl implements DashboardService {
     public void renewNewsYeonhapJsonObject() {
         try {
             yeonhapJsonObject = buildNewsObject();
+            sinks.pushYeonhap(getYeonhapWrapperJson());
+            sinks.pushDashboard(getDashboardJsonObjectNoRenew());
         } catch (Exception e) {
             log.error("\ub274\uc2a4 \uac31\uc2e0 \uc2e4\ud328: {}", e.getMessage());
             yeonhapJsonObject = wrapInitMessage("\ub370\uc774\ud130 \uac31\uc2e0 \uc911 \uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4", "\uc7a0\uc2dc \ud6c4 \ub2e4\uc2dc \uc2dc\ub3c4\ud574\uc8fc\uc138\uc694.");
