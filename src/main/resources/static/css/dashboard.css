@@ -195,30 +195,40 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
     border: 1.5px solid var(--color-bg-elev);
 }
 
-/* 도시 레이블 마커 */
-.osh-city-mk {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    pointer-events: none;
-}
-.osh-city-mk__dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    border: 1.5px solid rgba(255,255,255,0.9);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.35);
-    flex-shrink: 0;
-}
-.osh-city-mk__label {
-    margin-top: 2px;
-    font-size: 9px;
+/* 도시 permanent label (Leaflet tooltip) */
+.leaflet-tooltip.osh-city-label {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
     font-family: var(--font-sans);
-    font-weight: 600;
+    font-size: 9px;
+    font-weight: 700;
     color: var(--color-fg);
-    text-shadow: 0 0 3px var(--color-bg), 0 0 3px var(--color-bg);
+    text-shadow:
+        0 0 3px var(--color-bg),
+        0 0 3px var(--color-bg),
+        0 0 3px var(--color-bg);
     white-space: nowrap;
-    line-height: 1;
-    pointer-events: none;
+    pointer-events: none !important;
+}
+.leaflet-tooltip.osh-city-label::before { display: none; }
+
+/* GPS 현재 위치 마커 */
+.osh-user-loc {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #3b82f6;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.5), 0 1px 5px rgba(0,0,0,0.3);
+    position: relative;
+}
+.osh-user-loc__pulse {
+    position: absolute;
+    inset: -7px;
+    border-radius: 50%;
+    background: rgba(59, 130, 246, 0.25);
+    animation: oshPulse 2s ease-out infinite;
 }
 
 /* === popup (클릭) === */

@@ -111,6 +111,8 @@
         newsLayer      = L.layerGroup().addTo(map);
 
         buildLegend();
+        // GPS 현재 위치 요청 (브라우저 권한 허용 시에만 동작)
+        setTimeout(initUserLocation, 500);
         return map;
     }
 
@@ -302,21 +304,7 @@
         legend.addTo(map);
     }
 
-    /* ========== 도시 레이어 (소형 원 + 이름) ========== */
-
-    function cityDivIcon(cityName, tempC) {
-        const fill = tempToFillColor(tempC);
-        const t = (tempC != null && !isNaN(tempC)) ? tempC.toFixed(0) + '°' : '?';
-        return L.divIcon({
-            className: '',
-            html: '<div class="osh-city-mk">' +
-                    '<div class="osh-city-mk__dot" style="background:' + fill + '"></div>' +
-                    '<span class="osh-city-mk__label">' + H.esc(cityName) + '</span>' +
-                  '</div>',
-            iconSize: null,
-            iconAnchor: [6, 6]
-        });
-    }
+    /* ========== 도시 레이어 (circleMarker + permanent tooltip) ========== */
 
     function buildCityPopupHtml(cityName) {
         const wd = _weatherByCity[cityName];
@@ -345,21 +333,102 @@
         Object.keys(_weatherByCity).forEach(function (name) {
             const wd = _weatherByCity[name];
             if (wd.lat == null || wd.lon == null) return;
-            const m = L.marker([wd.lat, wd.lon], {
-                icon: cityDivIcon(name, wd.tempC),
-                zIndexOffset: 100
+
+            // circleMarker → 클릭 영역이 반지름 5px 의 원으로 제한돼 하위 마커 클릭 차단 없음
+            const c = L.circleMarker([wd.lat, wd.lon], {
+                radius: 5,
+                fillColor: tempToFillColor(wd.tempC),
+                color: '#fff',
+                weight: 1.5,
+                fillOpacity: 0.95,
+                opacity: 1,
+                pane: 'markerPane'
             });
-            m.bindPopup(buildCityPopupHtml(name), { maxWidth: 200 });
-            m.addTo(cityLayer);
+            // 도시명 permanent label (non-interactive)
+            c.bindTooltip(H.esc(name), {
+                permanent: true,
+                direction: 'right',
+                offset: [6, 0],
+                className: 'osh-city-label',
+                interactive: false
+            });
+            c.bindPopup(buildCityPopupHtml(name), { maxWidth: 200 });
+            c.addTo(cityLayer);
         });
     }
 
     function updateCityLayerStyles() {
-        // 도시 팝업 내용 갱신 (공기질 업데이트 후)
-        if (!cityLayer) return;
-        cityLayer.eachLayer(function (m) {
-            // marker 의 popup 재바인딩은 비효율, popup 이 열릴 때 갱신하는 정도로
+        // 대기질 업데이트 시 도시 레이어는 색 변경 없음 (온도 기반) — noop
+    }
+
+    /* ========== GPS 현재 위치 ========== */
+
+    let _userMarker = null;
+
+    function findNearestCity(lat, lon) {
+        let minDist = Infinity;
+        let nearest = null;
+        Object.keys(_weatherByCity).forEach(function (name) {
+            const wd = _weatherByCity[name];
+            if (wd.lat == null || wd.lon == null) return;
+            const d = (wd.lat - lat) * (wd.lat - lat) + (wd.lon - lon) * (wd.lon - lon);
+            if (d < minDist) { minDist = d; nearest = name; }
         });
+        return nearest;
+    }
+
+    function buildUserPopupHtml(lat, lon) {
+        const city = findNearestCity(lat, lon);
+        const wd = city ? _weatherByCity[city] : null;
+        const ai = city ? _airInfoByCity[city] : null;
+        let html = '<div class="osh-popup"><b>📍 현재 위치</b>';
+        if (city) html += '<div class="osh-popup__time">가장 가까운 관측지: ' + H.esc(city) + '</div>';
+        if (wd) {
+            html += '<div>기온 ' + (wd.tempC != null ? wd.tempC.toFixed(1) : '-') + '°C</div>';
+            if (wd.humidity != null) html += '<div>습도 ' + wd.humidity + '%</div>';
+            if (wd.windSpeed != null) html += '<div>바람 ' + wd.windSpeed.toFixed(1) + ' m/s</div>';
+            if (wd.description) html += '<div>' + H.esc(wd.description) + '</div>';
+        } else {
+            html += '<div>날씨 데이터 로딩 중…</div>';
+        }
+        if (ai) {
+            const parts = [];
+            if (ai.label) parts.push(ai.label);
+            if (ai.pm10 != null && ai.pm10 >= 0) parts.push('PM10 ' + ai.pm10 + 'µg');
+            if (ai.pm25 != null && ai.pm25 >= 0) parts.push('PM2.5 ' + ai.pm25 + 'µg');
+            if (parts.length) html += '<div>대기질 ' + H.esc(parts.join(' · ')) + '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    function initUserLocation() {
+        if (!map || !navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+            function (pos) {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+
+                const icon = L.divIcon({
+                    className: '',
+                    html: '<div class="osh-user-loc"><div class="osh-user-loc__pulse"></div></div>',
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7]
+                });
+                if (_userMarker) { try { map.removeLayer(_userMarker); } catch (e) { /* noop */ } }
+                _userMarker = L.marker([lat, lon], { icon: icon, zIndexOffset: 999 });
+
+                // popup 이 열릴 때마다 최신 데이터로 갱신
+                _userMarker.on('popupopen', function () {
+                    _userMarker.getPopup().setContent(buildUserPopupHtml(lat, lon));
+                });
+                _userMarker.bindPopup(buildUserPopupHtml(lat, lon), { maxWidth: 230 });
+                _userMarker.addTo(map);
+                _userMarker.openPopup();
+            },
+            function () { /* 권한 거부 등 — 조용히 무시 */ },
+            { timeout: 10000, maximumAge: 300000 }
+        );
     }
 
     /* ========== 날씨 렌더 (코로플레스 + 도시 레이어 업데이트) ========== */
