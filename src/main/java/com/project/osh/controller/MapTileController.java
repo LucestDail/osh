@@ -64,7 +64,7 @@ public class MapTileController {
 
             return ResponseEntity.ok()
                     .contentType(MediaType.IMAGE_PNG)
-                    .cacheControl(CacheControl.maxAge(10, TimeUnit.MINUTES))
+                    .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS))
                     .body(bytes);
 
         } catch (Exception e) {

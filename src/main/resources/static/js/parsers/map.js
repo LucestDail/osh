@@ -127,14 +127,23 @@
 
     function buildOwmLayers() {
         const base = window.location.origin + '/osh/map-tile';
-        _owmCloudsLayer = L.tileLayer(base + '/clouds_new/{z}/{x}/{y}', {
-            opacity: 0.45,
+        const commonOpts = {
             maxZoom: 18,
+            updateWhenZooming: false,   // 줌 중 타일 요청 억제 (속도↑)
+            updateWhenIdle: true,       // 지도 멈춘 후 로드 (속도↑)
+            keepBuffer: 1,
+            crossOrigin: false
+        };
+        // 구름 레이어: 낮은 불투명도(배경 질감용)
+        _owmCloudsLayer = L.tileLayer(base + '/clouds_new/{z}/{x}/{y}', {
+            ...commonOpts,
+            opacity: 0.25,
             attribution: '© OpenWeatherMap'
         });
+        // 강수 레이어: 높은 불투명도(선명하게)
         _owmPrecipLayer = L.tileLayer(base + '/precipitation_new/{z}/{x}/{y}', {
-            opacity: 0.6,
-            maxZoom: 18,
+            ...commonOpts,
+            opacity: 0.88,
             attribution: '© OpenWeatherMap'
         });
     }
