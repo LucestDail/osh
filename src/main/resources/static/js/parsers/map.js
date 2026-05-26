@@ -546,9 +546,25 @@
         return null;
     }
 
-    /* ========== 신규 마커 팝업 자동 표시 (30초) ========== */
-    var _autoPopupT  = null;
-    var _autoCloseT  = null;
+    /* ========== 최근 N시간 이내 판별 ========== */
+    function isRecent(str, hoursAgo) {
+        try {
+            var s = String(str || '');
+            var d;
+            if (/^\d{14}$/.test(s)) {
+                var iso = s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)
+                        + 'T'+s.slice(8,10)+':'+s.slice(10,12)+':'+s.slice(12,14);
+                d = new Date(iso);
+            } else {
+                d = new Date(s.replace(/\//g, '-').replace(' ', 'T'));
+            }
+            return !isNaN(d.getTime()) && (Date.now() - d.getTime()) < hoursAgo * 3600000;
+        } catch (e) { return false; }
+    }
+
+    /* ========== 신규 마커 팝업 자동 표시 (30초, 지도 이동 포함) ========== */
+    var _autoPopupT   = null;
+    var _autoCloseT   = null;
     var _autoPopupPri = 0;
 
     function scheduleAutoPopup(marker, pri) {
@@ -556,11 +572,15 @@
         if (_autoPopupT) clearTimeout(_autoPopupT);
         _autoPopupPri = pri;
         _autoPopupT = setTimeout(function () {
-            _autoPopupT  = null;
+            _autoPopupT   = null;
             _autoPopupPri = 0;
             if (_autoCloseT) clearTimeout(_autoCloseT);
-            marker.openPopup();
-            _autoCloseT = setTimeout(function () { marker.closePopup(); }, 30000);
+            // 마커 위치로 지도 이동 후 팝업 오픈
+            if (map) map.panTo(marker.getLatLng(), { animate: true, duration: 0.5 });
+            setTimeout(function () {
+                marker.openPopup();
+                _autoCloseT = setTimeout(function () { marker.closePopup(); }, 30000);
+            }, 600);
         }, 400);
     }
 
@@ -597,7 +617,7 @@
                 const c = lookupRegionCoord(it.RCPTN_RGN_NM);
                 if (!c) continue;
                 const key = (it.CRT_DT || '') + '|' + (it.RCPTN_RGN_NM || '');
-                const isNew = _prevEmrKeys.size > 0 && !_prevEmrKeys.has(key);
+                const isNew = _prevEmrKeys.size > 0 && !_prevEmrKeys.has(key) && isRecent(it.CRT_DT, 4);
                 nextKeys.add(key);
                 const level = emergencyLevel(it.EMRG_STEP_NM);
                 const m = L.marker(c, { icon: emergencyDivIcon(level, isNew) });
@@ -649,7 +669,7 @@
             const lon = (x > 100 && x < 140) ? x : y;
             if (lat < 33 || lat > 39 || lon < 124 || lon > 132) continue;
             const key = (it.startDate || '') + '|' + it.coordX + '|' + it.coordY;
-            const isNew = _prevTrafficKeys.size > 0 && !_prevTrafficKeys.has(key);
+            const isNew = _prevTrafficKeys.size > 0 && !_prevTrafficKeys.has(key) && isRecent(it.startDate, 4);
             nextKeys.add(key);
             const m = L.marker([lat, lon], { icon: trafficDivIcon(isNew) });
             const tipHtml =
@@ -746,7 +766,7 @@
                 const g = grouped[k];
                 const topLink = g.items[0] ? (g.items[0].link || g.items[0].title || k) : k;
                 const key = k + '|' + topLink.slice(0, 60);
-                const isNew = _prevNewsKeys.size > 0 && !_prevNewsKeys.has(key);
+                const isNew = _prevNewsKeys.size > 0 && !_prevNewsKeys.has(key) && isRecent(g.items[0] && g.items[0].pubDate, 4);
                 nextKeys.add(key);
                 const m = L.marker(g.coord, { icon: newsDivIcon(g.items.length, isNew) });
                 const tipTitle = g.items[0] ? H.truncate(g.items[0].title || k, 40) : k;
