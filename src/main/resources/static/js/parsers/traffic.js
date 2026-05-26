@@ -31,11 +31,22 @@
         }
     });
 
+    function parseDate(s) {
+        var str = String(s || '');
+        if (str.length >= 14) {
+            // yyyyMMddHHmmss → ISO string
+            var iso = str.slice(0,4) + '-' + str.slice(4,6) + '-' + str.slice(6,8)
+                    + 'T' + str.slice(8,10) + ':' + str.slice(10,12) + ':' + str.slice(12,14);
+            return new Date(iso).getTime();
+        }
+        return new Date(str).getTime() || 0;
+    }
+
     function render(strJson) {
         const root = H.unwrap(strJson, 'trafficJson');
         const items = (root && root.body && Array.isArray(root.body.items)) ? root.body.items.slice() : [];
         items.sort(function (a, b) {
-            return new Date(b.startDate || 0).getTime() - new Date(a.startDate || 0).getTime();
+            return parseDate(b.startDate) - parseDate(a.startDate);
         });
         pager.update(items);
     }
