@@ -1,5 +1,6 @@
 package com.project.osh.util;
 
+import java.net.URI;
 import java.time.Duration;
 
 import org.slf4j.Logger;
@@ -32,8 +33,10 @@ public class ReactiveHttp {
      * GET \ud638\ucd9c. \uc2e4\ud328 \uc2dc \ud638\ucd9c\ucd1d \uc18c\uc694\uc2dc\uac04 \ub300\ub7b5 = (timeout * (retry+1)) \uc774\ub0b4.
      */
     public Mono<String> get(String url) {
+        // URI.create \uc0ac\uc6a9: WebClient.uri(String) \uc740 \uc774\ubbf8 \uc778\ucf54\ub529\ub41c %2B/%2F \ub97c
+        // \ub2e4\uc2dc %252B/%252F \ub85c \uc774\uc911 \uc778\ucf54\ub529\ud574 data.go.kr \ud0a4\uc758 +,/ \uac00 \uae68\uc9c4\ub2e4.
         return webClient.get()
-                .uri(url)
+                .uri(URI.create(url))
                 .retrieve()
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(8))
