@@ -195,6 +195,32 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
     border: 1.5px solid var(--color-bg-elev);
 }
 
+/* 도시 레이블 마커 */
+.osh-city-mk {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+}
+.osh-city-mk__dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.9);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+    flex-shrink: 0;
+}
+.osh-city-mk__label {
+    margin-top: 2px;
+    font-size: 9px;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    color: var(--color-fg);
+    text-shadow: 0 0 3px var(--color-bg), 0 0 3px var(--color-bg);
+    white-space: nowrap;
+    line-height: 1;
+    pointer-events: none;
+}
+
 /* === popup (클릭) === */
 .osh-popup { font-size: var(--fs-xs); color: var(--color-fg); max-width: 280px; }
 .osh-popup b { font-size: var(--fs-sm); display: block; margin-bottom: 4px; color: var(--color-fg); }
@@ -210,19 +236,8 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
     box-shadow: var(--shadow-2) !important;
 }
 
-/* === 시도 hover 툴팁 === */
-.leaflet-tooltip.osh-province-tooltip {
-    background: var(--color-bg-elev) !important;
-    color: var(--color-fg) !important;
-    border: 1px solid var(--color-border) !important;
-    box-shadow: var(--shadow-2) !important;
-    font-family: var(--font-sans);
-    font-size: var(--fs-xs);
-    padding: 8px 12px;
-    border-radius: var(--radius);
-    pointer-events: none;
-    max-width: 220px;
-}
+/* === 시도 hover 커서 === */
+.leaflet-interactive { cursor: pointer; }
 
 /* === 온도 범례 === */
 .osh-legend {

@@ -26,6 +26,7 @@
     let map = null;
     let tileLayer = null;
     let choroplethLayer = null;   // 기온 코로플레스 (GeoJSON)
+    let cityLayer = null;         // 19도시 원 + 이름 마커
     let emergencyLayer = null;
     let trafficLayer = null;
     let newsLayer = null;
@@ -37,7 +38,7 @@
     let provincesPromise = null;
 
     // 데이터 캐시
-    let _weatherByCity = {};    // cityName → { tempC, humidity, windSpeed, description }
+    let _weatherByCity = {};    // cityName → { tempC, humidity, windSpeed, description, lat, lon }
     let _airGradeByCity = {};   // cityName → grade string
     let _airInfoByCity = {};    // cityName → { grade, pm10, pm25, label }
 
@@ -69,13 +70,13 @@
         return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
 
-    // 제주 포함 전국 bbox
-    const KR_BOUNDS = [[33.0, 125.0], [38.9, 130.2]];
-    const MAX_FIT_ZOOM = 9;
+    // 본토 중심 (제주 포함 전국) — setView 로 고정 줌 사용
+    const KR_CENTER = [36.5, 127.9];
+    const KR_ZOOM   = 7.75;   // 꽉 채운 본토뷰
 
     function fitToKorea() {
         if (!map) return;
-        try { map.fitBounds(KR_BOUNDS, { padding: [4, 4], maxZoom: MAX_FIT_ZOOM, animate: false }); }
+        try { map.setView(KR_CENTER, KR_ZOOM, { animate: false }); }
         catch (e) { /* noop */ }
     }
 
@@ -104,6 +105,7 @@
         });
 
         applyTile();
+        cityLayer      = L.layerGroup().addTo(map);
         emergencyLayer = L.layerGroup().addTo(map);
         trafficLayer   = L.layerGroup().addTo(map);
         newsLayer      = L.layerGroup().addTo(map);
@@ -120,9 +122,10 @@
             subdomains: 'abcd',
             maxZoom: 18
         }).addTo(map);
-        // choropleth 을 타일 위, 마커 아래에 배치
+        // 레이어 순서: tile → choropleth → city → emergency → traffic → news
         if (choroplethLayer) {
             choroplethLayer.bringToBack();
+            cityLayer.bringToFront();
             emergencyLayer.bringToFront();
             trafficLayer.bringToFront();
             newsLayer.bringToFront();
@@ -228,13 +231,12 @@
                 color: isDark() ? '#666' : '#aaa',
                 opacity: 0.9
             });
-            layer.unbindTooltip();
-            layer.bindTooltip(buildTooltipHtml(name), {
-                sticky: true,
-                opacity: 1,
-                className: 'osh-province-tooltip'
-            });
+            // 팝업 내용 갱신 (이미 열려 있으면 닫고 갱신)
+            layer.unbindPopup();
+            layer.bindPopup(buildTooltipHtml(name), { maxWidth: 240 });
         });
+        // 도시 마커 온도색도 갱신
+        updateCityLayerStyles();
     }
 
     function initChoropleth(geojson) {
@@ -250,14 +252,11 @@
                 const name = feature.properties.name;
                 _provinceLayerMap[name] = layer;
 
-                layer.bindTooltip(buildTooltipHtml(name), {
-                    sticky: true,
-                    opacity: 1,
-                    className: 'osh-province-tooltip'
-                });
+                // 클릭 시 팝업 (hover 는 테두리 강조만)
+                layer.bindPopup(buildTooltipHtml(name), { maxWidth: 240 });
 
                 layer.on('mouseover', function () {
-                    layer.setStyle({ weight: 2.5, color: isDark() ? '#ddd' : '#333', fillOpacity: 0.8 });
+                    layer.setStyle({ weight: 2.5, color: isDark() ? '#fff' : '#222', fillOpacity: 0.82 });
                 });
                 layer.on('mouseout', function () {
                     choroplethLayer.resetStyle(layer);
@@ -266,7 +265,8 @@
         });
 
         choroplethLayer.addTo(map);
-        // 마커 레이어들을 choropleth 위에 배치
+        // 레이어 순서 정리
+        cityLayer.bringToFront();
         emergencyLayer.bringToFront();
         trafficLayer.bringToFront();
         newsLayer.bringToFront();
@@ -302,7 +302,67 @@
         legend.addTo(map);
     }
 
-    /* ========== 날씨 렌더 (코로플레스 업데이트) ========== */
+    /* ========== 도시 레이어 (소형 원 + 이름) ========== */
+
+    function cityDivIcon(cityName, tempC) {
+        const fill = tempToFillColor(tempC);
+        const t = (tempC != null && !isNaN(tempC)) ? tempC.toFixed(0) + '°' : '?';
+        return L.divIcon({
+            className: '',
+            html: '<div class="osh-city-mk">' +
+                    '<div class="osh-city-mk__dot" style="background:' + fill + '"></div>' +
+                    '<span class="osh-city-mk__label">' + H.esc(cityName) + '</span>' +
+                  '</div>',
+            iconSize: null,
+            iconAnchor: [6, 6]
+        });
+    }
+
+    function buildCityPopupHtml(cityName) {
+        const wd = _weatherByCity[cityName];
+        const ai = _airInfoByCity[cityName];
+        let html = '<div class="osh-popup"><b>' + H.esc(cityName) + '</b>';
+        if (wd) {
+            html += '<div>기온 ' + (wd.tempC != null ? wd.tempC.toFixed(1) : '-') + '°C</div>';
+            if (wd.humidity != null) html += '<div>습도 ' + wd.humidity + '%</div>';
+            if (wd.windSpeed != null) html += '<div>바람 ' + wd.windSpeed.toFixed(1) + ' m/s</div>';
+            if (wd.description) html += '<div>' + H.esc(wd.description) + '</div>';
+        }
+        if (ai) {
+            const parts = [];
+            if (ai.label) parts.push(ai.label);
+            if (ai.pm10 != null && ai.pm10 >= 0) parts.push('PM10 ' + ai.pm10 + 'µg');
+            if (ai.pm25 != null && ai.pm25 >= 0) parts.push('PM2.5 ' + ai.pm25 + 'µg');
+            if (parts.length) html += '<div>대기질 ' + H.esc(parts.join(' · ')) + '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    function renderCityLayer() {
+        if (!cityLayer) return;
+        cityLayer.clearLayers();
+        Object.keys(_weatherByCity).forEach(function (name) {
+            const wd = _weatherByCity[name];
+            if (wd.lat == null || wd.lon == null) return;
+            const m = L.marker([wd.lat, wd.lon], {
+                icon: cityDivIcon(name, wd.tempC),
+                zIndexOffset: 100
+            });
+            m.bindPopup(buildCityPopupHtml(name), { maxWidth: 200 });
+            m.addTo(cityLayer);
+        });
+    }
+
+    function updateCityLayerStyles() {
+        // 도시 팝업 내용 갱신 (공기질 업데이트 후)
+        if (!cityLayer) return;
+        cityLayer.eachLayer(function (m) {
+            // marker 의 popup 재바인딩은 비효율, popup 이 열릴 때 갱신하는 정도로
+        });
+    }
+
+    /* ========== 날씨 렌더 (코로플레스 + 도시 레이어 업데이트) ========== */
 
     function renderWeather(strJson) {
         const wrapper = H.unwrap(strJson, 'weatherJson');
@@ -318,11 +378,15 @@
                 tempC: typeof tempK === 'number' ? tempK - 273.15 : null,
                 humidity: payload.main.humidity,
                 windSpeed: payload.wind ? payload.wind.speed : null,
-                description: payload.weather && payload.weather[0] ? payload.weather[0].description : null
+                description: payload.weather && payload.weather[0] ? payload.weather[0].description : null,
+                lat: payload.coord ? payload.coord.lat : null,
+                lon: payload.coord ? payload.coord.lon : null
             };
         });
 
         if (!ensureMap()) return;
+
+        renderCityLayer();  // 도시 마커 항상 갱신
 
         if (!provincesData) {
             loadProvinces().then(function (geojson) {
