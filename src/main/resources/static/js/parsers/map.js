@@ -89,8 +89,10 @@
         map = L.map(host, {
             zoomControl: true,
             attributionControl: true,
-            scrollWheelZoom: false,
+            scrollWheelZoom: 'center',
             zoomSnap: 0.25,
+            zoomDelta: 0.25,
+            wheelPxPerZoomLevel: 120,
             maxZoom: 14,
             minZoom: 5
         });
