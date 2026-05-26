@@ -111,8 +111,9 @@
         newsLayer      = L.layerGroup().addTo(map);
 
         buildLegend();
-        // GPS 현재 위치 요청 (브라우저 권한 허용 시에만 동작)
-        setTimeout(initUserLocation, 500);
+        buildLocateControl();
+        // 페이지 로드 시 조용히 자동 위치 탐지 시도
+        setTimeout(tryLocate, 600);
         return map;
     }
 
@@ -361,9 +362,10 @@
         // 대기질 업데이트 시 도시 레이어는 색 변경 없음 (온도 기반) — noop
     }
 
-    /* ========== GPS 현재 위치 ========== */
+    /* ========== 현재 위치 (GPS → IP 폴백) ========== */
 
     let _userMarker = null;
+    let _locBtn = null;   // 버튼 엘리먼트 참조 (로딩 아이콘 토글용)
 
     function findNearestCity(lat, lon) {
         let minDist = Infinity;
@@ -377,11 +379,12 @@
         return nearest;
     }
 
-    function buildUserPopupHtml(lat, lon) {
+    function buildUserPopupHtml(lat, lon, sourceLabel) {
         const city = findNearestCity(lat, lon);
         const wd = city ? _weatherByCity[city] : null;
         const ai = city ? _airInfoByCity[city] : null;
         let html = '<div class="osh-popup"><b>📍 현재 위치</b>';
+        if (sourceLabel) html += '<div class="osh-popup__time">위치 방식: ' + H.esc(sourceLabel) + '</div>';
         if (city) html += '<div class="osh-popup__time">가장 가까운 관측지: ' + H.esc(city) + '</div>';
         if (wd) {
             html += '<div>기온 ' + (wd.tempC != null ? wd.tempC.toFixed(1) : '-') + '°C</div>';
@@ -402,33 +405,89 @@
         return html;
     }
 
-    function initUserLocation() {
-        if (!map || !navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(
-            function (pos) {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
+    function placeUserMarker(lat, lon, sourceLabel) {
+        if (!map) return;
+        const icon = L.divIcon({
+            className: '',
+            html: '<div class="osh-user-loc"><div class="osh-user-loc__pulse"></div></div>',
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
+        });
+        if (_userMarker) { try { map.removeLayer(_userMarker); } catch (e) { /* noop */ } }
+        _userMarker = L.marker([lat, lon], { icon: icon, zIndexOffset: 999 });
+        _userMarker.on('popupopen', function () {
+            _userMarker.getPopup().setContent(buildUserPopupHtml(lat, lon, sourceLabel));
+        });
+        _userMarker.bindPopup(buildUserPopupHtml(lat, lon, sourceLabel), { maxWidth: 240 });
+        _userMarker.addTo(map);
+        _userMarker.openPopup();
+        if (_locBtn) { _locBtn.innerHTML = '📍'; _locBtn.classList.remove('is-loading'); }
+    }
 
-                const icon = L.divIcon({
-                    className: '',
-                    html: '<div class="osh-user-loc"><div class="osh-user-loc__pulse"></div></div>',
-                    iconSize: [14, 14],
-                    iconAnchor: [7, 7]
-                });
-                if (_userMarker) { try { map.removeLayer(_userMarker); } catch (e) { /* noop */ } }
-                _userMarker = L.marker([lat, lon], { icon: icon, zIndexOffset: 999 });
+    function tryIpGeolocation(onSuccess, onFail) {
+        // HTTP/HTTPS 무관하게 동작하는 공개 IP 위치 API (CORS 지원, 무료)
+        fetch('https://ipapi.co/json/')
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d && d.latitude && d.longitude) {
+                    onSuccess(d.latitude, d.longitude, 'IP 기반');
+                } else {
+                    onFail && onFail();
+                }
+            })
+            .catch(function () { onFail && onFail(); });
+    }
 
-                // popup 이 열릴 때마다 최신 데이터로 갱신
-                _userMarker.on('popupopen', function () {
-                    _userMarker.getPopup().setContent(buildUserPopupHtml(lat, lon));
-                });
-                _userMarker.bindPopup(buildUserPopupHtml(lat, lon), { maxWidth: 230 });
-                _userMarker.addTo(map);
-                _userMarker.openPopup();
-            },
-            function () { /* 권한 거부 등 — 조용히 무시 */ },
-            { timeout: 10000, maximumAge: 300000 }
-        );
+    function tryLocate(manual) {
+        if (!map) return;
+        if (_locBtn) { _locBtn.innerHTML = '⟳'; _locBtn.classList.add('is-loading'); }
+
+        // 1) GPS: HTTPS or localhost 에서만 작동
+        if (window.isSecureContext && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function (pos) {
+                    placeUserMarker(pos.coords.latitude, pos.coords.longitude, 'GPS');
+                },
+                function () {
+                    // GPS 실패 → IP 폴백
+                    tryIpGeolocation(
+                        function (lat, lon, src) { placeUserMarker(lat, lon, src); },
+                        function () {
+                            if (_locBtn) { _locBtn.innerHTML = '📍'; _locBtn.classList.remove('is-loading'); }
+                        }
+                    );
+                },
+                { timeout: 8000, maximumAge: 300000 }
+            );
+        } else {
+            // 2) HTTP 환경: GPS 불가 → IP 폴백으로 바로 시도
+            tryIpGeolocation(
+                function (lat, lon, src) { placeUserMarker(lat, lon, src); },
+                function () {
+                    if (_locBtn) { _locBtn.innerHTML = '📍'; _locBtn.classList.remove('is-loading'); }
+                }
+            );
+        }
+    }
+
+    function buildLocateControl() {
+        if (!map) return;
+        const ctrl = L.control({ position: 'topleft' });
+        ctrl.onAdd = function () {
+            const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control osh-loc-ctrl');
+            const btn = L.DomUtil.create('a', 'osh-loc-btn', container);
+            btn.innerHTML = '📍';
+            btn.title = '현재 위치 찾기';
+            btn.href = '#';
+            _locBtn = btn;
+            L.DomEvent.on(btn, 'click', function (e) {
+                L.DomEvent.stopPropagation(e);
+                L.DomEvent.preventDefault(e);
+                tryLocate(true);
+            });
+            return container;
+        };
+        ctrl.addTo(map);
     }
 
     /* ========== 날씨 렌더 (코로플레스 + 도시 레이어 업데이트) ========== */

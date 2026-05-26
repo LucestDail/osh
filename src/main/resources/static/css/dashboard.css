@@ -214,6 +214,24 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
 }
 .leaflet-tooltip.osh-city-label::before { display: none; }
 
+/* 현재 위치 버튼 */
+.osh-loc-ctrl { margin-top: 10px !important; }
+.osh-loc-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 16px;
+    text-decoration: none;
+    cursor: pointer;
+}
+.osh-loc-btn.is-loading { animation: oshLocSpin 0.8s linear infinite; }
+@keyframes oshLocSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
 /* GPS 현재 위치 마커 */
 .osh-user-loc {
     width: 14px; height: 14px;
