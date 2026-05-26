@@ -238,16 +238,19 @@ public class DashboardServiceImpl implements DashboardService {
                     .toStream()
                     .forEach(t -> {
                         long idx = t.getT1();
+                        String name = t.getT2();
                         String raw = t.getT3();
                         if (raw == null || raw.isBlank()) {
-                            log.warn("city={} \ub0a0\uc528 \uc870\ud68c \ube48 \uc751\ub2f5", t.getT2());
+                            log.warn("city={} \ub0a0\uc528 \uc870\ud68c \ube48 \uc751\ub2f5", name);
                             return;
                         }
                         try {
-                            String wjson = jsonUtil.getJson(raw).toString();
-                            next.addProperty("weatherJson" + idx, wjson);
+                            JsonObject entry = jsonUtil.getJson(raw);
+                            // \ud55c\uae00 \ub3c4\uc2dc\uba85 \uc8fc\uc785 \u2014 \uad6c\uc870\uac00 \uc11c\ubc84\uc5d0 \ub2e8\uc77c \ucd9c\ucc98\ub85c \uc874\uc7ac\ud558\ub3c4\ub85d (\ud074\ub77c\uc774\uc5b8\ud2b8 \ud558\ub4dc\ucf54\ub529 \uc81c\uac70)
+                            entry.addProperty("cityName", name);
+                            next.addProperty("weatherJson" + idx, entry.toString());
                         } catch (Exception parseEx) {
-                            log.warn("city={} \ub0a0\uc528 \ud30c\uc2f1 \uc2e4\ud328: {}", t.getT2(), parseEx.getMessage());
+                            log.warn("city={} \ub0a0\uc528 \ud30c\uc2f1 \uc2e4\ud328: {}", name, parseEx.getMessage());
                         }
                     });
         } catch (Exception e) {

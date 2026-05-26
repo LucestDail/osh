@@ -1,0 +1,103 @@
+/*
+ * 디자인 토큰
+ * - 모든 색상/간격/굴림/그림자는 이 파일의 변수로만 정의
+ * - 다크모드는 data-theme="dark" 또는 prefers-color-scheme: dark 자동 대응
+ */
+:root {
+    /* color: light */
+    --color-bg:        #f5f7fb;
+    --color-bg-elev:   #ffffff;
+    --color-fg:        #1a1f36;
+    --color-fg-muted:  #5f6b85;
+    --color-border:    #e4e8f0;
+    --color-border-strong: #c8cfdf;
+    --color-primary:   #3b6cff;
+    --color-primary-fg:#ffffff;
+    --color-primary-soft: #eaf0ff;
+    --color-success:   #1aa37a;
+    --color-warning:   #e0a020;
+    --color-danger:    #d94c4c;
+    --color-info:      #2596be;
+    --color-overlay:   rgba(15, 23, 42, 0.04);
+
+    /* spacing 8pt scale */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+
+    /* radius */
+    --radius-1: 6px;
+    --radius-2: 10px;
+    --radius-3: 14px;
+
+    /* shadow */
+    --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.05);
+    --shadow-2: 0 2px 8px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-3: 0 12px 24px rgba(15, 23, 42, 0.08);
+
+    /* typography */
+    --font-sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+                 "Noto Sans KR", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    --fs-xs: 11px;
+    --fs-sm: 13px;
+    --fs-md: 14px;
+    --fs-lg: 16px;
+    --fs-xl: 20px;
+    --fs-2xl: 28px;
+    --lh-tight: 1.25;
+    --lh-base:  1.5;
+
+    /* transition */
+    --t-fast: 120ms ease;
+    --t-med:  220ms ease;
+}
+
+/* dark theme — class override + prefers-color-scheme 둘 다 지원 */
+[data-theme="dark"] {
+    --color-bg:        #0e1320;
+    --color-bg-elev:   #181f30;
+    --color-fg:        #e7ebf4;
+    --color-fg-muted:  #99a3bd;
+    --color-border:    #283149;
+    --color-border-strong: #3a4566;
+    --color-primary:   #6b8eff;
+    --color-primary-fg:#0e1320;
+    --color-primary-soft: #1d2842;
+    --color-success:   #2bbf8d;
+    --color-warning:   #f0b340;
+    --color-danger:    #ef6b6b;
+    --color-info:      #4cb3d6;
+    --color-overlay:   rgba(255, 255, 255, 0.04);
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-3: 0 12px 24px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --color-bg:        #0e1320;
+        --color-bg-elev:   #181f30;
+        --color-fg:        #e7ebf4;
+        --color-fg-muted:  #99a3bd;
+        --color-border:    #283149;
+        --color-border-strong: #3a4566;
+        --color-primary:   #6b8eff;
+        --color-primary-fg:#0e1320;
+        --color-primary-soft: #1d2842;
+        --color-success:   #2bbf8d;
+        --color-warning:   #f0b340;
+        --color-danger:    #ef6b6b;
+        --color-info:      #4cb3d6;
+        --color-overlay:   rgba(255, 255, 255, 0.04);
+
+        --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+        --shadow-2: 0 2px 8px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.5);
+        --shadow-3: 0 12px 24px rgba(0, 0, 0, 0.5);
+    }
+}

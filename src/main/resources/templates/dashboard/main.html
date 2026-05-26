@@ -1,872 +1,208 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
-	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<meta name="description" content="" />
-	<meta name="author" content="" />
-	<title>Asynchronous Yacking Journal</title>
-    <!-- jQuery -->
-    <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <!-- jQuery UI -->
- 	<script type="text/javascript" src="https://code.jquery.com/ui/1.14.0/jquery-ui.min.js"></script>
-    <!-- jQuery Color -->
-    <script type="text/javascript" src="https://code.jquery.com/color/jquery.color-3.0.0.min.js"></script>
-    <!-- Toastr -->
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-    <!-- Bootstrap -->
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- CSS -->
-    <link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css"/>
-	<link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css" />
-    <link type="text/css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        :root {
-            --primary-color: #4e73df;
-            --secondary-color: #858796;
-            --success-color: #1cc88a;
-            --info-color: #36b9cc;
-            --warning-color: #f6c23e;
-            --danger-color: #e74a3b;
-            --light-color: #f8f9fc;
-            --dark-color: #5a5c69;
-            --card-bg: #ffffff;
-            --card-border: #e3e6f0;
-            --text-primary: #5a5c69;
-            --text-secondary: #858796;
-        }
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OSH · 메인 대시보드</title>
 
-        body {
-            background-color: var(--light-color);
-            font-family: 'Nunito', sans-serif;
-            color: var(--text-primary);
-            height: 100vh;
-            overflow: auto;
-        }
+    <link rel="stylesheet" th:href="@{/css/tokens.css}"     href="/css/tokens.css">
+    <link rel="stylesheet" th:href="@{/css/base.css}"       href="/css/base.css">
+    <link rel="stylesheet" th:href="@{/css/components.css}" href="/css/components.css">
+    <link rel="stylesheet" th:href="@{/css/dashboard.css}"  href="/css/dashboard.css">
 
-        .dashboard-container {
-            padding: 0.5rem;
-            min-height: 100vh;
-            overflow: visible;
-        }
-
-        .dashboard-header {
-            margin-bottom: 0.5rem;
-            text-align: center;
-        }
-
-        .dashboard-title {
-            color: var(--primary-color);
-            font-weight: 700;
-            font-size: 1.1rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .dashboard-subtitle {
-            color: var(--secondary-color);
-            font-size: 0.8rem;
-        }
-
-        .card {
-            background: var(--card-bg);
-            border: none;
-            border-radius: 0.35rem;
-            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-            margin-bottom: 0.5rem;
-            height: calc(50vh - 3rem);
-            transition: transform 0.2s ease-in-out;
-            overflow: hidden;
-        }
-
-        .card:hover {
-            transform: translateY(-2px);
-        }
-
-        .card-header {
-            background-color: var(--card-bg);
-            border-bottom: 1px solid var(--card-border);
-            padding: 0.5rem;
-            border-radius: 0.35rem 0.35rem 0 0 !important;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .card-title {
-            margin: 0;
-            font-size: 0.9rem;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .card-icon {
-            color: var(--primary-color);
-            font-size: 1rem;
-        }
-
-        .card-body {
-            padding: 0.5rem;
-            height: calc(100% - 2.5rem);
-            overflow: auto;
-        }
-
-        .table {
-            margin-bottom: 0;
-            font-size: 0.8rem;
-        }
-
-        .table th {
-            background-color: var(--light-color);
-            color: var(--text-primary);
-            font-weight: 600;
-            border-bottom: 2px solid var(--card-border);
-            padding: 0.35rem;
-            white-space: nowrap;
-            position: sticky;
-            top: 0;
-            z-index: 1;
-        }
-
-        .table td {
-            vertical-align: middle;
-            color: var(--text-primary);
-            padding: 0.35rem;
-            white-space: nowrap;
-        }
-
-        .table tbody tr {
-            transition: background-color 0.3s ease;
-        }
-
-        .table tbody tr:hover {
-            background-color: rgba(78, 115, 223, 0.05);
-        }
-
-        .table-responsive {
-            height: 100%;
-            overflow-y: auto;
-        }
-
-        .table-responsive::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .table-responsive::-webkit-scrollbar-track {
-            background: var(--light-color);
-        }
-
-        .table-responsive::-webkit-scrollbar-thumb {
-            background: var(--secondary-color);
-            border-radius: 3px;
-        }
-
-        .update-animation {
-            animation: highlight 1s ease-out;
-        }
-
-        @keyframes highlight {
-            0% {
-                background-color: rgba(78, 115, 223, 0.1);
-            }
-            100% {
-                background-color: transparent;
-            }
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .section-title {
-            color: var(--primary-color);
-            font-weight: 700;
-            font-size: 1.25rem;
-            margin: 0;
-        }
-
-        .section-icon {
-            color: var(--primary-color);
-            font-size: 1.2rem;
-        }
-
-        .refresh-time {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            text-align: right;
-            margin-top: 0.5rem;
-            font-style: italic;
-        }
-
-        .row {
-            margin-right: -0.25rem;
-            margin-left: -0.25rem;
-        }
-
-        .col-lg-4, .col-lg-6, .col-lg-8 {
-            padding-right: 0.25rem;
-            padding-left: 0.25rem;
-        }
-
-        @media (max-width: 768px) {
-            .card {
-                height: auto;
-                min-height: 400px;
-            }
-            
-            .card-body {
-                height: 350px;
-            }
-        }
-
-        .chart-container {
-            position: relative;
-            height: 200px;
-            margin-bottom: 1rem;
-        }
-
-        .server-info-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem;
-        }
-
-        .server-info-item {
-            background: var(--card-bg);
-            padding: 0.5rem;
-            border-radius: 0.35rem;
-            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-        }
-
-        .server-info-label {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.25rem;
-        }
-
-        .server-info-value {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        /* 테이블 반응형 스타일 */
-        .table-responsive {
-            overflow-x: hidden;
-            margin: 0;
-            padding: 0;
-        }
-        
-        .table {
-            margin-bottom: 0;
-        }
-        
-        .table th {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .table td {
-            white-space: normal;
-            word-wrap: break-word;
-            max-width: 0; /* 텍스트 오버플로우를 위한 설정 */
-        }
-        
-        /* 모바일 화면에서의 테이블 조정 */
-        @media (max-width: 768px) {
-            .table th, .table td {
-                padding: 0.5rem;
-                font-size: 0.9rem;
-            }
-            
-            .table th:nth-child(1), .table td:nth-child(1) {
-                width: 20%;
-            }
-            
-            .table th:nth-child(2), .table td:nth-child(2) {
-                width: 20%;
-            }
-            
-            .table th:nth-child(3), .table td:nth-child(3) {
-                width: 30%;
-            }
-            
-            .table th:nth-child(4), .table td:nth-child(4) {
-                width: 30%;
-            }
-        }
-        
-        /* 작은 모바일 화면에서의 테이블 조정 */
-        @media (max-width: 576px) {
-            .table th, .table td {
-                padding: 0.3rem;
-                font-size: 0.8rem;
-            }
-            
-            .table th:nth-child(1), .table td:nth-child(1) {
-                width: 25%;
-            }
-            
-            .table th:nth-child(2), .table td:nth-child(2) {
-                width: 25%;
-            }
-            
-            .table th:nth-child(3), .table td:nth-child(3) {
-                width: 25%;
-            }
-            
-            .table th:nth-child(4), .table td:nth-child(4) {
-                width: 25%;
-            }
-        }
-
-        /* 모바일 헤더 스타일 */
-        .header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            transition: transform 0.3s ease-in-out;
-        }
-        
-        .header-hidden {
-            transform: translateY(-100%);
-        }
-        
-        /* 모바일 터치 피드백 */
-        .btn, .card {
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        /* 모바일 스크롤 성능 개선 */
-        * {
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        /* 모바일에서의 테이블 스타일 개선 */
-        @media (max-width: 768px) {
-            .table-responsive {
-                -webkit-overflow-scrolling: touch;
-            }
-            
-            .table th, .table td {
-                padding: 0.5rem;
-                font-size: 0.9rem;
-            }
-        }
-
-        /* 네비게이션 바 스타일 추가 */
-        .navbar {
-            background-color: var(--card-bg);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            padding: 0.5rem 1rem;
-            margin-bottom: 1rem;
-        }
-        
-        .navbar-brand {
-            color: var(--primary-color);
-            font-weight: 700;
-            font-size: 1.2rem;
-        }
-        
-        .nav-link {
-            color: var(--text-primary);
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
-            transition: background-color 0.3s;
-        }
-        
-        .nav-link:hover {
-            background-color: var(--light-color);
-            color: var(--primary-color);
-        }
-        
-        .nav-link.active {
-            color: var(--primary-color);
-            font-weight: 600;
-        }
-    </style>
-    <!-- 통합 게이트웨이(/osh) 뒤에서도 동작하도록 context-path 자동 prepend -->
-    <script th:inline="javascript">
-      window.CTX = /*[[@{/}]]*/ '/';
-    </script>
-    <script type="text/javascript" th:src="@{/js/jsonParser.js}" src="/js/jsonParser.js"></script>
-    <script type="text/javascript" th:src="@{/js/utils.js}" src="/js/utils.js"></script>
-    <script th:inline="javascript">
-        var eventSource;
-        var eventSource1;
-        var eventSource2;
-        var eventSource3;
-        var currentResponse;
-        var currentResponse1;
-        var currentResponse2;
-        var currentResponse3;
-
-        // 애니메이션 효과를 위한 유틸리티 함수
-        function addUpdateAnimation(element) {
-            element.classList.add('update-animation');
-            setTimeout(() => {
-                element.classList.remove('update-animation');
-            }, 1000);
-        }
-
-        window.addEventListener("load", function () {
-                // Connect to the server
-                eventSource = new EventSource(window.CTX + "dashboard/main/info");
-    
-                // Receive messages
-                eventSource.onmessage = function (event) {
-                    currentResponse = event.data;
-                    const oldContent = document.getElementById('weatherTbody').innerHTML;
-                    
-                    // 각 파서를 개별적으로 실행하여 한 파서의 실패가 다른 파서에 영향을 주지 않도록 함
-                    try {
-                        emergencyJsonParser(event.data);
-                    } catch (error) {
-                        console.error('긴급재난문자 파싱 실패:', error);
-                    }
-                    
-                    try {
-                        applicationJsonParser(event.data);
-                    } catch (error) {
-                        console.error('서버정보 파싱 실패:', error);
-                    }
-                    
-                    try {
-                        weatherJsonParser(event.data);
-                    } catch (error) {
-                        console.error('날씨정보 파싱 실패:', error);
-                    }
-                    
-                    try {
-                        trafficJsonParser(event.data);
-                    } catch (error) {
-                        console.error('교통정보 파싱 실패:', error);
-                    }
-                    
-                    try {
-                        yeonhapJsonParser(event.data);
-                    } catch (error) {
-                        console.error('뉴스정보 파싱 실패:', error);
-                    }
-                
-                // 내용이 변경된 경우에만 애니메이션 적용
-                if (oldContent !== document.getElementById('weatherTbody').innerHTML) {
-                    addUpdateAnimation(document.getElementById('weatherTable'));
-                }
-                };
-                eventSource.onerror = function (e) {
-                    console.log("EventSource failed: " + e);
-                };
-        }, false);
-
-            window.addEventListener("load", function () {
-                // Connect to the server
-                eventSource1 = new EventSource(window.CTX + "dashboard/main/traffic");
-
-                // Receive messages
-                eventSource1.onmessage = function (event) {
-                    currentResponse1 = event.data;
-                    const oldContent = document.getElementById('trafficTbody').innerHTML;
-                    
-                    try {
-                        trafficJsonParser(event.data);
-                    } catch (error) {
-                        console.error('교통정보 파싱 실패:', error);
-                    }
-                
-                // 내용이 변경된 경우에만 애니메이션 적용
-                if (oldContent !== document.getElementById('trafficTbody').innerHTML) {
-                    addUpdateAnimation(document.getElementById('trafficTable'));
-                }
-                };
-                eventSource1.onerror = function (e) {
-                    console.log("EventSource failed: " + e);
-                };
-        }, false);
-
-            window.addEventListener("load", function () {
-                // Connect to the server
-                eventSource2 = new EventSource(window.CTX + "dashboard/main/emergency");
-
-                // Receive messages
-                eventSource2.onmessage = function (event) {
-                    currentResponse2 = event.data;
-                    const oldContent = document.getElementById('emergencyTbody').innerHTML;
-                    
-                    try {
-                        emergencyJsonParser(event.data);
-                    } catch (error) {
-                        console.error('긴급재난문자 파싱 실패:', error);
-                    }
-                
-                    // 내용이 변경된 경우에만 애니메이션 적용
-                    if (oldContent !== document.getElementById('emergencyTbody').innerHTML) {
-                        addUpdateAnimation(document.getElementById('emergencyTable'));
-                    }
-                };
-                eventSource2.onerror = function (e) {
-                    console.log("EventSource failed: " + e);
-                };
-        }, false);
-
-            window.addEventListener("load", function () {
-                // Connect to the server
-                eventSource3 = new EventSource(window.CTX + "dashboard/main/yeonhap");
-
-                // Receive messages
-                eventSource3.onmessage = function (event) {
-                    currentResponse3 = event.data;
-                    const oldContent = document.getElementById('newsTbody').innerHTML;
-                    
-                    try {
-                        newsJsonParser(event.data);
-                    } catch (error) {
-                        console.error('뉴스정보 파싱 실패:', error);
-                    }
-                
-                    // 내용이 변경된 경우에만 애니메이션 적용
-                    if (oldContent !== document.getElementById('newsTbody').innerHTML) {
-                        addUpdateAnimation(document.getElementById('newsTable'));
-                    }
-                };
-                eventSource3.onerror = function (e) {
-                    console.error("News SSE connection failed:", e);
-                    eventSource3.close();
-                    // 5초 후 재연결 시도
-                    setTimeout(() => {
-                        console.log("Attempting to reconnect to news SSE...");
-                        eventSource3 = new EventSource(window.CTX + "dashboard/main/yeonhap");
-                    }, 5000);
-                };
-            }, false);
-    </script>
-    <!-- Custom Scripts (jQuery/Bootstrap/Chart.js \ub294 \uc774\ubbf8 <head>\uc5d0\uc11c \ub85c\ub4dc\ub428) -->
-    <script type="text/javascript" th:src="@{/js/jsonParser.js}" src="/js/jsonParser.js"></script>
-    
-    <!-- 모바일 터치 이벤트 지원을 위한 스크립트 -->
+    <!-- 사전 적용된 테마(localStorage) — flash 방지 -->
     <script>
-        // 모바일 터치 이벤트 지원
-        document.addEventListener('touchstart', function() {}, true);
-        document.addEventListener('touchmove', function() {}, true);
-        
-        // 모바일에서 스크롤 시 헤더 고정
-        let lastScroll = 0;
-        window.addEventListener('scroll', function() {
-            const currentScroll = window.pageYOffset;
-            const header = document.querySelector('.header');
-            if (currentScroll > lastScroll && currentScroll > 50) {
-                header.classList.add('header-hidden');
-            } else {
-                header.classList.remove('header-hidden');
-            }
-            lastScroll = currentScroll;
-        });
+      (function () {
+        try {
+          var t = localStorage.getItem('osh.theme');
+          if (t === 'dark' || t === 'light') {
+            document.documentElement.setAttribute('data-theme', t);
+          }
+        } catch (e) { /* noop */ }
+      })();
     </script>
+
+    <!-- Chart.js (서버 정보 doughnut) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
-    <!-- 네비게이션 바 추가 -->
-    <nav class="navbar">
-        <div class="container">
-            <a class="navbar-brand" th:href="@{/}" href="/">OSH</a>
-            <div class="d-flex">
-                <a class="nav-link active" th:href="@{/}" href="/">메인 대시보드</a>
-                <a class="nav-link" th:href="@{/dashboard}" href="/dashboard">AI 대시보드</a>
-            </div>
+
+<!-- context-path 자동 prepend -->
+<script th:inline="javascript">
+  window.CTX = /*[[@{/}]]*/ '/';
+</script>
+
+<nav class="app-navbar">
+    <div class="app-navbar__inner">
+        <a class="app-navbar__brand" th:href="@{/}" href="/">OSH</a>
+        <div class="app-navbar__links">
+            <a class="app-navbar__link is-active" th:href="@{/}" href="/">메인 대시보드</a>
+            <a class="app-navbar__link"           th:href="@{/dashboard}" href="/dashboard">AI 대시보드</a>
         </div>
-    </nav>
+        <div class="app-navbar__actions">
+            <button class="theme-toggle" type="button" data-theme-toggle aria-label="다크/라이트 모드 전환"></button>
+        </div>
+    </div>
+</nav>
 
-	<section class="conA">
-		<div class="dashboard-container">
-			<div class="dashboard-header">
-				<h1 class="dashboard-title">안전 관리 담당자가<br>연속적으로 봐야할<br>주요 발생 내용들</h1>
-				<p class="dashboard-subtitle" id="currentTime"></p>
-		</div>
+<main class="page">
 
-			<div class="row g-1">
-				<!-- 첫 번째 행: 기상정보, 긴급재난문자, 교통돌발상황 -->
-				<div class="col-lg-4 col-md-6">
-					<div class="card">
-						<div class="card-header">
-							<h5 class="card-title">실시간 기상정보</h5>
-							<i class="bi bi-cloud-sun card-icon"></i>
-            </div>
-						<div class="card-body">
-							<div class="table-responsive">
-								<table id="weatherTable" class="table table-bordered">
-                        <colgroup>
-                            <col style="width:4%">
-                            <col style="width:12%">
-                            <col style="width:8%">
-                            <col style="width:8%">
-                            <col style="width:8%">
-                            <col style="width:12%">
-                            <col style="width:24%">
-                            <col style="width:24%">
-                        </colgroup>
-                        <thead>
-                            <tr>
-                                <th>지역</th>
-                                <th>날씨</th>
-                                <th>온도</th>
-                                <th>구름</th>
-                                <th>습도</th>
-                                <th>바람</th>
-                                <th>일출</th>
-                                <th>일몰</th>
-                            </tr>
-                        </thead>
-                        <tbody id="weatherTbody">
-										<tr>
-                            <td>준비중</td>
-                            <td>준비중</td>
-                            <td>준비중</td>
-                            <td>준비중</td>
-                            <td>준비중</td>
-                            <td>준비중</td>
-                            <td>준비중</td>
-                            <td>준비중</td>
-										</tr>
-                        </tbody>
-                    </table>
+    <header class="page__header">
+        <div>
+            <h1 class="page__title">실시간 안전 운영 대시보드</h1>
+            <p class="page__subtitle">기상 · 재난문자 · 교통돌발 · 뉴스 · 서버 지표를 한눈에</p>
+        </div>
+        <div class="page__clock"><span aria-hidden="true">⏱</span><span id="currentTime">--:--:--</span></div>
+    </header>
+
+    <section class="grid">
+
+        <!-- 19도시 날씨 카드 그리드 (가장 넓게) -->
+        <article class="card col-12">
+            <header class="card__header">
+                <h2 class="card__title">
+                    <span class="card__icon">☁</span>
+                    실시간 기상정보
+                    <span class="badge badge--primary">19 도시</span>
+                </h2>
+                <span class="live-pill" id="liveMain"></span>
+            </header>
+            <div class="card__body">
+                <div id="weatherGrid" class="weather-grid">
+                    <div class="empty-state"><div class="empty-state__title">날씨 정보를 불러오는 중입니다</div></div>
                 </div>
             </div>
-        </div>
-				</div>
+        </article>
 
-				<div class="col-lg-4 col-md-6">
-					<div class="card">
-						<div class="card-header">
-							<h5 class="card-title">실시간 긴급재난문자</h5>
-							<i class="bi bi-exclamation-triangle card-icon"></i>
-                        </div>
-						<div class="card-body">
-							<div class="table-responsive">
-								<table id="emergencyTable" class="table table-bordered">
-                        <colgroup>
-                            <col style="width:16%">
-                            <col style="width:20%">
-                            <col style="width:40%">
-                            <col style="width:12%">
-                            <col style="width:12%">
-                        </colgroup>
+        <!-- 긴급재난문자 -->
+        <article class="card col-6">
+            <header class="card__header">
+                <h2 class="card__title"><span class="card__icon">⚠</span>긴급재난문자</h2>
+                <span class="live-pill" id="liveEmergency"></span>
+            </header>
+            <div class="card__body card__body--flush">
+                <div class="table--scroll-y">
+                    <table class="table">
                         <thead>
                             <tr>
-                                <th>일시</th>
-                                <th>지역</th>
-                                <th>내용</th>
-                                <th>분류</th>
-                                <th>상세</th>
+                                <th style="width:140px">발송시각</th>
+                                <th style="width:160px">지역</th>
+                                <th>메시지</th>
+                                <th style="width:80px">단계</th>
+                                <th style="width:100px">유형</th>
                             </tr>
                         </thead>
                         <tbody id="emergencyTbody">
-                            <tr>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                            </tr>
+                            <tr><td colspan="5"><div class="empty-state"><div class="empty-state__title">데이터를 불러오는 중입니다</div></div></td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-        </div>
-				</div>
+        </article>
 
-				<div class="col-lg-4 col-md-6">
-					<div class="card">
-						<div class="card-header">
-							<h5 class="card-title">실시간 교통돌발상황</h5>
-							<i class="bi bi-car-front card-icon"></i>
-            </div>
-						<div class="card-body">
-							<div class="table-responsive">
-								<table id="trafficTable" class="table table-bordered">
-                        <colgroup>
-                            <col style="width:16%">
-                            <col style="width:20%">
-                            <col style="width:8%">
-                            <col style="width:32%">
-                            <col style="width:12%">
-                            <col style="width:12%">
-                        </colgroup>
+        <!-- 교통돌발 -->
+        <article class="card col-6">
+            <header class="card__header">
+                <h2 class="card__title"><span class="card__icon">🚧</span>교통돌발상황</h2>
+                <span class="live-pill" id="liveTraffic"></span>
+            </header>
+            <div class="card__body card__body--flush">
+                <div class="table--scroll-y">
+                    <table class="table">
                         <thead>
                             <tr>
-                                <th>일시</th>
+                                <th style="width:140px">발생시각</th>
                                 <th>도로명</th>
-                                <th>도로위치</th>
+                                <th style="width:80px">방향</th>
                                 <th>내용</th>
-                                <th>분류</th>
-                                <th>상세</th>
+                                <th style="width:80px">유형</th>
+                                <th style="width:100px">상세</th>
                             </tr>
                         </thead>
                         <tbody id="trafficTbody">
-                            <tr>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                            </tr>
-										<tr>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-										</tr>
-										<tr>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-										</tr>
-										<tr>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-										</tr>
-										<tr>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-										</tr>
-										<tr>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-										</tr>
-										<tr>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-                            </tr>
-                            <tr>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                            </tr>
-										<tr>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-											<td>준비중</td>
-                            </tr>
-                            <tr>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                                <td>준비중</td>
-                            </tr>
+                            <tr><td colspan="6"><div class="empty-state"><div class="empty-state__title">데이터를 불러오는 중입니다</div></div></td></tr>
                         </tbody>
                     </table>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- 두 번째 행: 뉴스와 서버정보 -->
-				<div class="col-lg-8 col-md-6">
-					<div class="card">
-						<div class="card-header">
-							<h5 class="card-title">실시간 뉴스</h5>
-							<i class="bi bi-newspaper card-icon"></i>
-						</div>
-						<div class="card-body">
-							<div class="table-responsive">
-								<table class="table table-hover">
-									<thead>
-										<tr>
-											<th style="width: 12%">시간</th>
-											<th style="width: 16%">제목</th>
-											<th style="width: 72%">내용</th>
-										</tr>
-									</thead>
-									<tbody id="newsTbody">
-										<!-- 뉴스 데이터가 여기에 동적으로 추가됩니다 -->
-									</tbody>
-								</table>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<div class="col-lg-4 col-md-6">
-					<div class="card">
-						<div class="card-header">
-							<h5 class="card-title">서버정보</h5>
-							<i class="bi bi-hdd-network card-icon"></i>
-						</div>
-						<div class="card-body">
-							<div class="chart-container">
-								<canvas id="memoryChart"></canvas>
-							</div>
-							<div class="server-info-grid">
-								<div class="server-info-item">
-									<div class="server-info-label">시스템 아키텍처</div>
-									<div class="server-info-value" id="systemArchitecture">-</div>
-								</div>
-								<div class="server-info-item">
-									<div class="server-info-label">시스템 이름</div>
-									<div class="server-info-value" id="systemName">-</div>
-								</div>
-								<div class="server-info-item">
-									<div class="server-info-label">시스템 부하</div>
-									<div class="server-info-value" id="systemLoad">-</div>
-								</div>
-								<div class="server-info-item">
-									<div class="server-info-label">전체 메모리</div>
-									<div class="server-info-value" id="totalMemory">-</div>
-								</div>
-								<div class="server-info-item">
-									<div class="server-info-label">사용 중인 메모리</div>
-									<div class="server-info-value" id="usedMemory">-</div>
-								</div>
-								<div class="server-info-item">
-									<div class="server-info-label">여유 메모리</div>
-									<div class="server-info-value" id="freeMemory">-</div>
-								</div>
-							</div>
-						</div>
-					</div>
                 </div>
             </div>
-		</div>
-	</section>
-</body>
+        </article>
 
+        <!-- 뉴스 -->
+        <article class="card col-8">
+            <header class="card__header">
+                <h2 class="card__title"><span class="card__icon">📰</span>실시간 뉴스</h2>
+                <span class="live-pill" id="liveNews"></span>
+            </header>
+            <div class="card__body card__body--flush">
+                <div class="table--scroll-y">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="width:140px">시각</th>
+                                <th style="width:24%">제목</th>
+                                <th>내용</th>
+                            </tr>
+                        </thead>
+                        <tbody id="newsTbody">
+                            <tr><td colspan="3"><div class="empty-state"><div class="empty-state__title">뉴스를 불러오는 중입니다</div></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+
+        <!-- 서버 정보 -->
+        <article class="card col-4">
+            <header class="card__header">
+                <h2 class="card__title"><span class="card__icon">⚙</span>서버 지표</h2>
+            </header>
+            <div class="card__body">
+                <div class="chart-wrap"><canvas id="memoryChart"></canvas></div>
+                <div class="server-grid">
+                    <div class="server-cell">
+                        <div class="server-cell__label">아키텍처</div>
+                        <div class="server-cell__value" id="systemArchitecture">-</div>
+                    </div>
+                    <div class="server-cell">
+                        <div class="server-cell__label">OS</div>
+                        <div class="server-cell__value" id="systemName">-</div>
+                    </div>
+                    <div class="server-cell">
+                        <div class="server-cell__label">Load Avg</div>
+                        <div class="server-cell__value" id="systemLoad">-</div>
+                    </div>
+                    <div class="server-cell">
+                        <div class="server-cell__label">총 메모리</div>
+                        <div class="server-cell__value" id="totalMemory">-</div>
+                    </div>
+                    <div class="server-cell">
+                        <div class="server-cell__label">사용 중</div>
+                        <div class="server-cell__value" id="usedMemory">-</div>
+                    </div>
+                    <div class="server-cell">
+                        <div class="server-cell__label">여유</div>
+                        <div class="server-cell__value" id="freeMemory">-</div>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+    </section>
+</main>
+
+<!-- core helpers -->
+<script th:src="@{/js/core/helpers.js}"     src="/js/core/helpers.js"></script>
+<script th:src="@{/js/core/eventSource.js}" src="/js/core/eventSource.js"></script>
+<script th:src="@{/js/core/theme.js}"       src="/js/core/theme.js"></script>
+
+<!-- parsers -->
+<script th:src="@{/js/parsers/application.js}" src="/js/parsers/application.js"></script>
+<script th:src="@{/js/parsers/weather.js}"     src="/js/parsers/weather.js"></script>
+<script th:src="@{/js/parsers/emergency.js}"   src="/js/parsers/emergency.js"></script>
+<script th:src="@{/js/parsers/traffic.js}"     src="/js/parsers/traffic.js"></script>
+<script th:src="@{/js/parsers/news.js}"        src="/js/parsers/news.js"></script>
+
+<!-- entry -->
+<script th:src="@{/js/main-dashboard.js}" src="/js/main-dashboard.js"></script>
+</body>
 </html>
