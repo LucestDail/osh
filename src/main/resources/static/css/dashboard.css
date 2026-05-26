@@ -278,8 +278,7 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
     line-height: 1.4;
     padding: 5px 9px;
     border-radius: var(--radius);
-    white-space: normal;
-    max-width: 200px;
+    white-space: nowrap;
     pointer-events: none;
 }
 .leaflet-tooltip.osh-map-tip::before { display: none; }
