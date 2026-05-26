@@ -74,15 +74,20 @@
     <section class="grid grid--tri">
 
         <!-- (1) 전국 지도 -->
-        <article class="card card--fixed">
+        <article class="card card--fixed" id="mapCard">
             <header class="card__header">
                 <h2 class="card__title">
                     <span class="card__icon">🗺</span>전국 상황 지도
                 </h2>
-                <span class="badge">19도시 · 재난 · 교통</span>
+                <div class="card__header-aux">
+                    <span class="badge" id="mapAlertBadge"></span>
+                    <span class="badge">19도시 · 재난 · 교통</span>
+                    <button class="btn btn--ghost btn--sm" id="mapFsBtn" title="전체화면 (ESC 해제)">⛶</button>
+                </div>
             </header>
-            <div class="card__body card__body--flush card__body--map">
+            <div class="card__body card__body--flush card__body--map" id="mapBody">
                 <div id="mapCanvas"></div>
+                <div id="mapAlertBox" class="map-alert-box" aria-live="polite"></div>
             </div>
         </article>
 

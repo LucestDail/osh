@@ -737,6 +737,7 @@
         renderTraffic: renderTraffic,
         renderNews: renderNews,
         setAirGrades: setAirGrades,
-        setAirInfo: setAirInfo
+        setAirInfo: setAirInfo,
+        invalidateSize: function () { if (map) try { map.invalidateSize(); } catch (e) { /* noop */ } }
     };
 })();

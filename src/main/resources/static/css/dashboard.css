@@ -149,8 +149,67 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
 .btn--sm { padding: 0 6px; }
 
 /* === map === */
-.card__body--map { padding: 0; }
+.card__body--map { padding: 0; position: relative; }
 #mapCanvas { width: 100%; height: 100%; min-height: 0; }
+
+/* 전체화면 모드 */
+#mapCard.map-fs {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9000 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    flex: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+}
+#mapCard.map-fs #mapBody { height: calc(100dvh - 44px) !important; }
+#mapFsBtn { font-size: 15px; line-height: 1; }
+
+/* 신규 이벤트 알림 오버레이 */
+.map-alert-box {
+    position: absolute;
+    top: 50px; right: 10px;
+    z-index: 600;
+    width: 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    pointer-events: none;
+}
+.map-alert {
+    pointer-events: all;
+    background: var(--color-bg-elev);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-2);
+    padding: 8px 30px 10px 10px;
+    font-size: var(--fs-xs);
+    position: relative;
+    overflow: hidden;
+    animation: mapAlertIn 0.3s ease;
+}
+.map-alert.is-out { animation: mapAlertOut 0.4s ease forwards; }
+@keyframes mapAlertIn  { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes mapAlertOut { to   { opacity: 0; transform: translateX(24px); } }
+.map-alert--emergency { border-left: 3px solid var(--color-danger); }
+.map-alert--traffic   { border-left: 3px solid var(--color-warning); }
+.map-alert--news      { border-left: 3px solid var(--color-info); }
+.map-alert__type  { font-size: 10px; opacity: 0.65; margin-bottom: 2px; }
+.map-alert__title { font-weight: 600; font-size: var(--fs-xs); line-height: 1.35; }
+.map-alert__body  { color: var(--color-fg-muted); margin-top: 2px; font-size: 10px; line-height: 1.35; }
+.map-alert__close {
+    position: absolute; top: 5px; right: 6px;
+    background: none; border: none; cursor: pointer;
+    color: var(--color-fg-muted); font-size: 15px; padding: 0; line-height: 1;
+}
+.map-alert__close:hover { color: var(--color-fg); }
+.map-alert__bar {
+    position: absolute; bottom: 0; left: 0; height: 2px;
+    background: currentColor; opacity: 0.25;
+    animation: mapAlertBar 30s linear forwards;
+}
+@keyframes mapAlertBar { from { width: 100%; } to { width: 0%; } }
 .leaflet-container { background: var(--color-bg) !important; font-size: var(--fs-xs); }
 [data-theme="dark"] .leaflet-control-attribution,
 [data-theme="dark"] .leaflet-bar a {
