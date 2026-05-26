@@ -31,6 +31,10 @@ public class OshProperties {
         private String name;
         private String lat;
         private String lon;
+        /** \uae30\uc0c1\uccad \uaca9\uc790 X (nx). KMA \ub2e8\uae30\uc608\ubcf4 \uc870\ud68c\uc6a9. */
+        private Integer nx;
+        /** \uae30\uc0c1\uccad \uaca9\uc790 Y (ny). */
+        private Integer ny;
 
         public String getName() {
             return name;
@@ -54,6 +58,22 @@ public class OshProperties {
 
         public void setLon(String lon) {
             this.lon = lon;
+        }
+
+        public Integer getNx() {
+            return nx;
+        }
+
+        public void setNx(Integer nx) {
+            this.nx = nx;
+        }
+
+        public Integer getNy() {
+            return ny;
+        }
+
+        public void setNy(Integer ny) {
+            this.ny = ny;
         }
     }
 }

@@ -52,4 +52,11 @@ public interface DashboardService {
     JsonObject getNewsYeonhapJsonObject();
 
     void renewNewsYeonhapJsonObject();
+
+    /** \ub300\uae30\uc9c8(AirKorea) wrapper. */
+    JsonObject getAirWrapperJson();
+
+    JsonObject getAirJsonObject();
+
+    void renewAirJsonObject();
 }

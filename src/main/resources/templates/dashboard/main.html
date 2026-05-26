@@ -24,6 +24,16 @@
 
     <!-- Chart.js (서버 정보 doughnut) -->
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Leaflet (전국 지도) -->
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin="" />
+    <script defer
+            src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
 </head>
 <body>
 
@@ -57,8 +67,43 @@
 
     <section class="grid">
 
-        <!-- 19도시 날씨 카드 그리드 (가장 넓게) -->
+        <!-- 전국 지도 (날씨/재난/교통 통합 시각화) -->
         <article class="card col-12">
+            <header class="card__header">
+                <h2 class="card__title">
+                    <span class="card__icon">🗺</span>
+                    전국 상황 지도
+                    <span class="badge">19도시 + 재난 + 교통</span>
+                </h2>
+            </header>
+            <div class="card__body card__body--flush">
+                <div class="map-wrap"><div id="mapCanvas"></div></div>
+            </div>
+        </article>
+
+        <!-- AI 분할 요약 (5개 미니카드) -->
+        <article class="card col-12">
+            <header class="card__header">
+                <h2 class="card__title">
+                    <span class="card__icon">🤖</span>
+                    AI 한줄 브리핑
+                    <span class="badge">10분 갱신</span>
+                </h2>
+                <button class="btn btn--ghost btn--sm" type="button" id="splitRefreshBtn">새로고침</button>
+            </header>
+            <div class="card__body">
+                <div id="splitGrid" class="split-grid">
+                    <div class="split-card"><div class="split-card__title">☁ 날씨</div><span id="splitWeather">불러오는 중...</span></div>
+                    <div class="split-card"><div class="split-card__title">💨 대기질</div><span id="splitAir">불러오는 중...</span></div>
+                    <div class="split-card"><div class="split-card__title">⚠ 재난</div><span id="splitEmergency">불러오는 중...</span></div>
+                    <div class="split-card"><div class="split-card__title">🚧 교통</div><span id="splitTraffic">불러오는 중...</span></div>
+                    <div class="split-card"><div class="split-card__title">📰 뉴스</div><span id="splitNews">불러오는 중...</span></div>
+                </div>
+            </div>
+        </article>
+
+        <!-- 19도시 날씨 카드 그리드 -->
+        <article class="card col-8">
             <header class="card__header">
                 <h2 class="card__title">
                     <span class="card__icon">☁</span>
@@ -70,6 +115,23 @@
             <div class="card__body">
                 <div id="weatherGrid" class="weather-grid">
                     <div class="empty-state"><div class="empty-state__title">날씨 정보를 불러오는 중입니다</div></div>
+                </div>
+            </div>
+        </article>
+
+        <!-- 미세먼지 (AirKorea) -->
+        <article class="card col-4">
+            <header class="card__header">
+                <h2 class="card__title">
+                    <span class="card__icon">💨</span>
+                    대기질
+                    <span class="badge">시·도별</span>
+                </h2>
+                <span class="live-pill" id="liveAir"></span>
+            </header>
+            <div class="card__body">
+                <div id="airGrid" class="air-grid">
+                    <div class="empty-state"><div class="empty-state__title">대기질 정보를 불러오는 중입니다</div></div>
                 </div>
             </div>
         </article>
@@ -201,6 +263,8 @@
 <script th:src="@{/js/parsers/emergency.js}"   src="/js/parsers/emergency.js"></script>
 <script th:src="@{/js/parsers/traffic.js}"     src="/js/parsers/traffic.js"></script>
 <script th:src="@{/js/parsers/news.js}"        src="/js/parsers/news.js"></script>
+<script th:src="@{/js/parsers/air.js}"         src="/js/parsers/air.js"></script>
+<script th:src="@{/js/parsers/map.js}"         src="/js/parsers/map.js"></script>
 
 <!-- entry -->
 <script th:src="@{/js/main-dashboard.js}" src="/js/main-dashboard.js"></script>

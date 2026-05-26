@@ -13,6 +13,36 @@
         return (w && (w.description || w.main)) || '-';
     }
 
+    // KMA SKY: 1=맑음, 3=구름많음, 4=흐림 / PTY: 0=없음 1=비 2=비/눈 3=눈 4=소나기
+    function skyLabel(sky, pty) {
+        const p = Number(pty);
+        if (p === 1) return '비';
+        if (p === 2) return '비/눈';
+        if (p === 3) return '눈';
+        if (p === 4) return '소나기';
+        switch (Number(sky)) {
+            case 1: return '맑음';
+            case 3: return '구름많음';
+            case 4: return '흐림';
+            default: return '-';
+        }
+    }
+
+    function fcstStrip(fcstStr) {
+        if (!fcstStr) return '';
+        const f = H.safeParse(fcstStr);
+        if (!f) return '';
+        const t = f.today || {};
+        const m = f.tomorrow || {};
+        const seg = function (label, b) {
+            const range = ((b.tmn != null ? b.tmn : '-') + '/' + (b.tmx != null ? b.tmx : '-')) + '°';
+            return '<span>' + label + ' <b>' + range + '</b> · ' +
+                   skyLabel(b.sky, b.pty) +
+                   (b.pop != null ? ' <b>' + b.pop + '%</b>' : '') + '</span>';
+        };
+        return '<div class="weather-cell__fcst">' + seg('오늘', t) + seg('내일', m) + '</div>';
+    }
+
     function cell(payload) {
         const name = payload.cityName || payload.name || '-';
         const main = payload.main || {};
@@ -29,6 +59,7 @@
                    '<span>바람</span>'    + '<b>' + (payload.wind && payload.wind.speed != null ? payload.wind.speed + ' m/s' : '-') + '</b>' +
                    '<span>일출</span>'    + '<b>' + H.formatHm(payload.sys && payload.sys.sunrise) + '</b>' +
                  '</div>' +
+                 fcstStrip(payload.fcst) +
                '</div>';
     }
 

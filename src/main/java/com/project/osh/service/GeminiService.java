@@ -1,5 +1,7 @@
 package com.project.osh.service;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.project.osh.config.OshProperties;
 import com.project.osh.interfaces.EmergencyInterface;
 import com.project.osh.interfaces.TrafficInterface;
@@ -9,6 +11,7 @@ import com.project.osh.model.GeminiResponse;
 import com.project.osh.model.News;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -29,6 +32,7 @@ public class GeminiService {
     private final EmergencyInterface emergencyInterface;
     private final TrafficInterface trafficInterface;
     private final OshProperties properties;
+    private final DashboardService dashboardService;
 
     public GeminiService(
             @Value("${gemini.api.key}") String apiKey,
@@ -37,7 +41,8 @@ public class GeminiService {
             WeatherInterface weatherInterface,
             EmergencyInterface emergencyInterface,
             TrafficInterface trafficInterface,
-            OshProperties properties) {
+            OshProperties properties,
+            @Lazy DashboardService dashboardService) {
         this.restTemplate = new RestTemplate();
         this.apiKey = apiKey;
         this.apiUrl = apiUrl;
@@ -46,6 +51,7 @@ public class GeminiService {
         this.emergencyInterface = emergencyInterface;
         this.trafficInterface = trafficInterface;
         this.properties = properties;
+        this.dashboardService = dashboardService;
     }
 
     public String generateContent(String prompt) {
@@ -144,6 +150,85 @@ public class GeminiService {
         } catch (Exception e) {
             log.error("Error generating dashboard summary", e);
             return "데이터를 불러오는 중 오류가 발생했습니다.";
+        }
+    }
+
+    /**
+     * 5 \uce74\ub4dc \uc6a9 \uc9e7\uc740 \ubd84\ud560 \uc694\uc57d. \uc751\ub2f5\uc740 \uc21c\uc218 JSON \ubb38\uc790\uc5f4.
+     *   { "weather": "...", "air": "...", "emergency": "...", "traffic": "...", "news": "..." }
+     * \ub300\uc2dc\ubcf4\ub4dc \ucea0\uc2dc\ub97c \uadf8\ub300\ub85c \uc0ac\uc6a9\ud574 19\ud68c \uc7ac\ud638\ucd9c \ud68c\ud53c.
+     */
+    public String generateSplitSummary() {
+        try {
+            String weatherCache   = dashboardService.getWeatherWrapperJson().toString();
+            String airCache       = dashboardService.getAirWrapperJson().toString();
+            String emergencyCache = dashboardService.getEmergencyWrapperJson().toString();
+            String trafficCache   = dashboardService.getTrafficWrapperJson().toString();
+
+            List<News> recentNews = newsService.getAllNews();
+            StringBuilder newsBrief = new StringBuilder();
+            int n = Math.min(recentNews.size(), 15);
+            for (int i = 0; i < n; i++) {
+                News nw = recentNews.get(i);
+                if (nw != null && nw.getNewsTitle() != null) {
+                    newsBrief.append("- ").append(nw.getNewsTitle()).append('\n');
+                }
+            }
+
+            String prompt =
+                    "\ub2e4\uc74c \uc6b4\uc601 \ub300\uc2dc\ubcf4\ub4dc \uc2a4\ub0c5\uc0f7\uc744 5\uac1c \uce74\ub4dc(weather, air, emergency, traffic, news) \uc6a9 \uc9e7\uc740 \ud55c\uad6d\uc5b4 \uc694\uc57d\uc73c\ub85c \uc555\ucd95\ud574\uc8fc\uc138\uc694.\n" +
+                    "\uaddc\uce59:\n" +
+                    "1. \uc774\ubaa8\uc9c0/\uba38\ub9ac\ub9d0 \uc5c6\uc774 \uac01 \ud56d\ubaa9 1\u20132\ubb38\uc7a5(\ucd5c\ub300 80\uc790).\n" +
+                    "2. \ub0a0\uc528\ub294 \ud2b9\uc774 \uc9c0\uc5ed/\uae30\uc628/\uac15\uc218 \uc911\uc2ec, \uc628\ub3c4\ub294 \uc12d\uc528 \uadf8\ub300\ub85c \ud45c\uae30(K \uba85\uc2dc \uae08\uc9c0).\n" +
+                    "3. air \ub294 \ub300\uae30\uc9c8 \uc18d \ucd5c\uc545 \uc9c0\uc5ed\uacfc \uc804\ubc18\uc801 \ub4f1\uae09.\n" +
+                    "4. \uc7ac\ub09c/\uad50\ud1b5\uc740 \ud604\uc2dc\uc810 \uc8fc\uc694 \uc774\uc288 \ud55c\ub450\uac1c.\n" +
+                    "5. \ub274\uc2a4\ub294 \uc624\ub298 \ud575\uc2ec \ud0a4\uc6cc\ub4dc\uc640 \ud750\ub984.\n" +
+                    "6. \ubc18\ub4dc\uc2dc \uc544\ub798 \uc2a4\ud0a4\ub9c8\uc758 \uc21c\uc218 JSON \ub9cc \ucd9c\ub825 (\ucf54\ub4dc\ud3f0\uc2a4 \uae08\uc9c0):\n" +
+                    "{\"weather\":\"...\",\"air\":\"...\",\"emergency\":\"...\",\"traffic\":\"...\",\"news\":\"...\"}\n\n" +
+                    "[weather wrapper]\n" + weatherCache + "\n\n" +
+                    "[air wrapper]\n" + airCache + "\n\n" +
+                    "[emergency wrapper]\n" + emergencyCache + "\n\n" +
+                    "[traffic wrapper]\n" + trafficCache + "\n\n" +
+                    "[news headlines]\n" + newsBrief.toString();
+
+            String raw = generateContent(prompt);
+            return sanitizeJson(raw);
+        } catch (Exception e) {
+            log.error("Error generating split summary", e);
+            JsonObject err = new JsonObject();
+            err.addProperty("weather", "-");
+            err.addProperty("air", "-");
+            err.addProperty("emergency", "-");
+            err.addProperty("traffic", "-");
+            err.addProperty("news", "\uc694\uc57d \uc0dd\uc131 \uc2e4\ud328");
+            return err.toString();
+        }
+    }
+
+    /** \ucf54\ub4dc\ud3f0\uc2a4 \uac10\uc2f8\uc9c0\uac70\ub098 \ubd80\uc218 \ud14d\uc2a4\ud2b8\uac00 \ub09c \uc751\ub2f5\uc744 \uc21c\uc218 JSON \uc73c\ub85c \uc815\ub9ac. */
+    private String sanitizeJson(String raw) {
+        if (raw == null) return "{}";
+        String s = raw.trim();
+        if (s.startsWith("```")) {
+            int firstNl = s.indexOf('\n');
+            if (firstNl > 0) s = s.substring(firstNl + 1);
+            if (s.endsWith("```")) s = s.substring(0, s.length() - 3);
+            s = s.trim();
+        }
+        int start = s.indexOf('{');
+        int end   = s.lastIndexOf('}');
+        if (start >= 0 && end > start) s = s.substring(start, end + 1);
+        try {
+            JsonParser.parseString(s);
+            return s;
+        } catch (Exception e) {
+            JsonObject fallback = new JsonObject();
+            fallback.addProperty("weather", "-");
+            fallback.addProperty("air", "-");
+            fallback.addProperty("emergency", "-");
+            fallback.addProperty("traffic", "-");
+            fallback.addProperty("news", s.length() > 200 ? s.substring(0, 200) + "..." : s);
+            return fallback.toString();
         }
     }
 

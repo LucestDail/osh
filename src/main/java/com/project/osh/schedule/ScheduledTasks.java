@@ -37,11 +37,12 @@ public class ScheduledTasks {
     }
 
     /**
-     * 1\uc2dc\uac04 \uc8fc\uae30: 19\ub3c4\uc2dc \ub0a0\uc528 \uc77c\uad04 \uac31\uc2e0.
+     * 1\uc2dc\uac04 \uc8fc\uae30: 19\ub3c4\uc2dc \ub0a0\uc528 + \ub300\uae30\uc9c8 \uc77c\uad04 \uac31\uc2e0.
      */
     @Scheduled(fixedDelay = 3_600_000)
     public void renewWeather() {
         safe("weather", dashboardService::renewWeatherJsonObject);
+        safe("air",     dashboardService::renewAirJsonObject);
     }
 
     /**

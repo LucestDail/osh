@@ -25,18 +25,22 @@ public class DashboardSinks {
     private final Sinks.Many<JsonObject> dashboardSink = Sinks.many().replay().latest();
     /** weather (19\ub3c4\uc2dc) - \ud558\ub8e8 24\ud68c \ubcc0\uacbd */
     private final Sinks.Many<JsonObject> weatherSink   = Sinks.many().replay().latest();
+    /** air (\ub300\uae30\uc9c8) - 1\uc2dc\uac04 \uc8fc\uae30 */
+    private final Sinks.Many<JsonObject> airSink       = Sinks.many().replay().latest();
     private final Sinks.Many<JsonObject> emergencySink = Sinks.many().replay().latest();
     private final Sinks.Many<JsonObject> trafficSink   = Sinks.many().replay().latest();
     private final Sinks.Many<JsonObject> yeonhapSink   = Sinks.many().replay().latest();
 
     public void pushDashboard(JsonObject obj) { if (obj != null) dashboardSink.tryEmitNext(obj); }
     public void pushWeather(JsonObject obj)   { if (obj != null) weatherSink.tryEmitNext(obj); }
+    public void pushAir(JsonObject obj)       { if (obj != null) airSink.tryEmitNext(obj); }
     public void pushEmergency(JsonObject obj) { if (obj != null) emergencySink.tryEmitNext(obj); }
     public void pushTraffic(JsonObject obj)   { if (obj != null) trafficSink.tryEmitNext(obj); }
     public void pushYeonhap(JsonObject obj)   { if (obj != null) yeonhapSink.tryEmitNext(obj); }
 
     public Flux<JsonObject> dashboardStream() { return dashboardSink.asFlux(); }
     public Flux<JsonObject> weatherStream()   { return weatherSink.asFlux(); }
+    public Flux<JsonObject> airStream()       { return airSink.asFlux(); }
     public Flux<JsonObject> emergencyStream() { return emergencySink.asFlux(); }
     public Flux<JsonObject> trafficStream()   { return trafficSink.asFlux(); }
     public Flux<JsonObject> yeonhapStream()   { return yeonhapSink.asFlux(); }
