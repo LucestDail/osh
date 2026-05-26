@@ -35,20 +35,24 @@ public class EmergencyInterface {
     public String getEmergencyInfo() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
         sdf.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
-        String strToday = sdf.format(System.currentTimeMillis());
-        String strYesterday = sdf.format(System.currentTimeMillis() - 24L * 60 * 60 * 1000);
+        long now = System.currentTimeMillis();
+        long day = 24L * 60 * 60 * 1000;
+        String d0 = sdf.format(now);
+        String d1 = sdf.format(now - day);
+        String d2 = sdf.format(now - 2 * day);
 
-        // \uc624\ub298 + \uc5b4\uc81c \ub3d9\uc2dc \uc870\ud68c \ud6c4 \ud569\uce58\uae30
         try {
-            Mono<String> today = http.get(buildUrl(strToday));
-            Mono<String> yesterday = http.get(buildUrl(strYesterday));
+            Mono<String> r0 = http.get(buildUrl(d0));
+            Mono<String> r1 = http.get(buildUrl(d1));
+            Mono<String> r2 = http.get(buildUrl(d2));
 
-            return Mono.zip(today.defaultIfEmpty(""), yesterday.defaultIfEmpty(""))
+            return Mono.zip(r0.defaultIfEmpty(""), r1.defaultIfEmpty(""), r2.defaultIfEmpty(""))
                     .map(tuple -> {
                         JsonObject combined = new JsonObject();
                         JsonArray items = new JsonArray();
                         appendBody(items, tuple.getT1());
                         appendBody(items, tuple.getT2());
+                        appendBody(items, tuple.getT3());
                         combined.add("items", items);
                         return combined.toString();
                     })
@@ -56,13 +60,14 @@ public class EmergencyInterface {
                     .blockOptional()
                     .orElse(EMPTY_RESPONSE);
         } catch (Exception e) {
-            log.error("\uae34\uae09\uc7ac\ub09c\ubb38\uc790 API \ud638\ucd9c \ub54c \uc624\ub958: {}", e.getMessage());
+            log.error("긴급재난문자 API 호출 때 오류: {}", e.getMessage());
             return EMPTY_RESPONSE;
         }
     }
 
     private String buildUrl(String crtDt) {
-        return SAFETY_EMERGENCY_URL + "?serviceKey=" + apiKey + "&crtDt=" + crtDt;
+        return SAFETY_EMERGENCY_URL + "?serviceKey=" + apiKey
+                + "&crtDt=" + crtDt + "&numOfRows=500&pageNo=1";
     }
 
     private void appendBody(JsonArray out, String payload) {

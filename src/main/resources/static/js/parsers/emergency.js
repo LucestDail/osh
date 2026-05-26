@@ -9,10 +9,12 @@
 
     function stepVariant(step) {
         const s = String(step || '').toLowerCase();
-        if (s.includes('경계') || s.includes('주의')) return 'warning';
         if (s.includes('심각') || s.includes('위기')) return 'danger';
+        if (s.includes('경계')) return 'danger';
+        if (s.includes('주의')) return 'warning';
         if (s.includes('관심')) return 'info';
-        return '';
+        if (s.includes('안전안내') || s.includes('안전')) return 'muted';
+        return 'muted';
     }
 
     function row(it) {

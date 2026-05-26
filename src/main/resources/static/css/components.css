@@ -117,6 +117,7 @@
 .badge--warning { background: rgba(224, 160, 32, 0.14); color: var(--color-warning); }
 .badge--danger  { background: rgba(217, 76, 76, 0.14);  color: var(--color-danger); }
 .badge--info    { background: rgba(37, 150, 190, 0.12); color: var(--color-info); }
+.badge--muted   { background: var(--color-surface-2); color: var(--color-text-2); }
 
 /* === table === */
 .table {

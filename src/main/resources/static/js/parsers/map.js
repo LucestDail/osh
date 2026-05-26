@@ -570,7 +570,7 @@
             const root = H.unwrap(strJson, 'emergencyJson');
             const items = (root && Array.isArray(root.items)) ? root.items : [];
             if (!items.length) return;
-            const max = Math.min(items.length, 30);
+            const max = Math.min(items.length, 100);
             for (let i = 0; i < max; i++) {
                 const it = items[i] || {};
                 const c = lookupRegionCoord(it.RCPTN_RGN_NM);
