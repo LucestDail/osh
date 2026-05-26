@@ -669,24 +669,23 @@
         return null;
     }
 
-    /* ========== 최근 N시간 이내 판별 ========== */
-    function isRecent(str, hoursAgo) {
+    /* ========== 날짜 문자열 → ms 변환 ========== */
+    function parseDateMs(str) {
         try {
             var s = String(str || '');
-            var d;
             if (/^\d{14}$/.test(s)) {
                 var iso = s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)
                         + 'T'+s.slice(8,10)+':'+s.slice(10,12)+':'+s.slice(12,14);
-                d = new Date(iso);
-            } else {
-                d = new Date(s.replace(/\//g, '-').replace(' ', 'T'));
+                var d = new Date(iso);
+                return isNaN(d.getTime()) ? 0 : d.getTime();
             }
-            return !isNaN(d.getTime()) && (Date.now() - d.getTime()) < hoursAgo * 3600000;
-        } catch (e) { return false; }
+            var d2 = new Date(s.replace(/\//g, '-').replace(' ', 'T'));
+            return isNaN(d2.getTime()) ? 0 : d2.getTime();
+        } catch (e) { return 0; }
     }
 
-    /* ========== 신규 마커 팝업 큐 (10초씩 순서대로) ========== */
-    var _popupQueue   = [];   // { marker, pri }
+    /* ========== 신규 마커 팝업 큐 (10초씩, 재난만 지도 이동) ========== */
+    var _popupQueue   = [];
     var _popupRunning = false;
 
     function _nextPopup() {
@@ -694,18 +693,23 @@
         _popupRunning = true;
         var item = _popupQueue.shift();
         var m = item.marker;
-        if (map) map.panTo(m.getLatLng(), { animate: true, duration: 0.4 });
+        var delay = 50;
+        if (item.pri >= 3 && map) {
+            // 재난만 지도 이동
+            map.panTo(m.getLatLng(), { animate: true, duration: 0.4 });
+            delay = 500;
+        }
         setTimeout(function () {
             m.openPopup();
             setTimeout(function () {
                 m.closePopup();
-                _nextPopup();   // 다음 항목
+                _nextPopup();
             }, 10000);
-        }, 500);
+        }, delay);
     }
 
     function scheduleAutoPopup(marker, pri) {
-        // 우선순위 높은 것이 앞으로
+        if (_popupQueue.length >= 3) return; // 최대 3개 누적
         _popupQueue.push({ marker: marker, pri: pri });
         _popupQueue.sort(function (a, b) { return b.pri - a.pri; });
         if (!_popupRunning) _nextPopup();
@@ -718,7 +722,8 @@
         return 'info';
     }
 
-    var _prevEmrKeys = new Set();
+    var _prevEmrKeys      = new Set();
+    var _lastEmrRenderAt  = Date.now();
 
     function emergencyDivIcon(level, isNew) {
         const cls = 'osh-mk osh-mk--emr osh-mk--emr-' + (level || 'info') + (isNew ? ' is-new' : '');
@@ -744,7 +749,9 @@
                 const c = lookupRegionCoord(it.RCPTN_RGN_NM);
                 if (!c) continue;
                 const key = (it.CRT_DT || '') + '|' + (it.RCPTN_RGN_NM || '');
-                const isNew = _prevEmrKeys.size > 0 && !_prevEmrKeys.has(key) && isRecent(it.CRT_DT, 4);
+                const isNew = _prevEmrKeys.size > 0
+                    && !_prevEmrKeys.has(key)
+                    && parseDateMs(it.CRT_DT) > _lastEmrRenderAt;
                 nextKeys.add(key);
                 const level = emergencyLevel(it.EMRG_STEP_NM);
                 const m = L.marker(c, { icon: emergencyDivIcon(level, isNew) });
@@ -761,13 +768,15 @@
                 m.addTo(emergencyLayer);
                 if (isNew) scheduleAutoPopup(m, 3);
             }
-            _prevEmrKeys = nextKeys;
+            _prevEmrKeys     = nextKeys;
+            _lastEmrRenderAt = Date.now();
         });
     }
 
     /* ========== 교통 마커 ========== */
 
-    var _prevTrafficKeys = new Set();
+    var _prevTrafficKeys     = new Set();
+    var _lastTrafficRenderAt = Date.now();
 
     function trafficDivIcon(isNew) {
         const cls = 'osh-mk osh-mk--traffic' + (isNew ? ' is-new' : '');
@@ -800,7 +809,9 @@
             const lon = (x > 100 && x < 140) ? x : y;
             if (lat < 33 || lat > 39 || lon < 124 || lon > 132) continue;
             const key = (it.startDate || '') + '|' + it.coordX + '|' + it.coordY;
-            const isNew = _prevTrafficKeys.size > 0 && !_prevTrafficKeys.has(key) && isRecent(it.startDate, 4);
+            const isNew = _prevTrafficKeys.size > 0
+                && !_prevTrafficKeys.has(key)
+                && parseDateMs(it.startDate) > _lastTrafficRenderAt;
             nextKeys.add(key);
             const m = L.marker([lat, lon], { icon: trafficDivIcon(isNew) });
             const tipHtml =
@@ -816,7 +827,8 @@
             m.addTo(trafficLayer);
             if (isNew) scheduleAutoPopup(m, 2);
         }
-        _prevTrafficKeys = nextKeys;
+        _prevTrafficKeys     = nextKeys;
+        _lastTrafficRenderAt = Date.now();
     }
 
     /* ========== 뉴스 마커 ========== */
@@ -858,7 +870,8 @@
         return null;
     }
 
-    var _prevNewsKeys = new Set();
+    var _prevNewsKeys     = new Set();
+    var _lastNewsRenderAt = Date.now();
 
     function newsDivIcon(count, isNew) {
         const label = (count && count > 1) ? String(count) : '📰';
@@ -897,7 +910,9 @@
                 const g = grouped[k];
                 const topLink = g.items[0] ? (g.items[0].link || g.items[0].title || k) : k;
                 const key = k + '|' + topLink.slice(0, 60);
-                const isNew = _prevNewsKeys.size > 0 && !_prevNewsKeys.has(key) && isRecent(g.items[0] && g.items[0].pubDate, 4);
+                const isNew = _prevNewsKeys.size > 0
+                    && !_prevNewsKeys.has(key)
+                    && parseDateMs(g.items[0] && g.items[0].pubDate) > _lastNewsRenderAt;
                 nextKeys.add(key);
                 const m = L.marker(g.coord, { icon: newsDivIcon(g.items.length, isNew) });
                 const tipTitle = g.items[0] ? H.truncate(g.items[0].title || k, 40) : k;
@@ -920,7 +935,8 @@
                 m.addTo(newsLayer);
                 if (isNew) scheduleAutoPopup(m, 1);
             });
-            _prevNewsKeys = nextKeys;
+            _prevNewsKeys     = nextKeys;
+            _lastNewsRenderAt = Date.now();
         });
     }
 
