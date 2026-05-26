@@ -241,11 +241,11 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
 /* 교통 마커 */
 .osh-mk--traffic {
     width: 22px; height: 22px; position: relative;
-    background: rgba(217,140,32,0.92);
+    background: rgba(217,76,76,0.9);
     font-size: 13px;
     box-shadow: 0 1px 6px rgba(0,0,0,0.45);
 }
-.osh-mk--traffic .osh-mk__pulse { background: rgba(224,160,32,0.55); }
+.osh-mk--traffic .osh-mk__pulse { background: rgba(217,76,76,0.45); }
 
 /* 뉴스 마커 */
 .osh-mk--news {

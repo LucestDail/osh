@@ -546,6 +546,24 @@
         return null;
     }
 
+    /* ========== 신규 마커 팝업 자동 표시 (30초) ========== */
+    var _autoPopupT  = null;
+    var _autoCloseT  = null;
+    var _autoPopupPri = 0;
+
+    function scheduleAutoPopup(marker, pri) {
+        if (_autoPopupT && pri <= _autoPopupPri) return;
+        if (_autoPopupT) clearTimeout(_autoPopupT);
+        _autoPopupPri = pri;
+        _autoPopupT = setTimeout(function () {
+            _autoPopupT  = null;
+            _autoPopupPri = 0;
+            if (_autoCloseT) clearTimeout(_autoCloseT);
+            marker.openPopup();
+            _autoCloseT = setTimeout(function () { marker.closePopup(); }, 30000);
+        }, 400);
+    }
+
     function emergencyLevel(step) {
         const s = String(step || '').toLowerCase();
         if (s.includes('심각') || s.includes('위기')) return 'danger';
@@ -594,6 +612,7 @@
                     '</div>';
                 m.bindPopup(popupHtml, { maxWidth: 320 });
                 m.addTo(emergencyLayer);
+                if (isNew) scheduleAutoPopup(m, 3);
             }
             _prevEmrKeys = nextKeys;
         });
@@ -644,6 +663,7 @@
                 '</div>';
             m.bindPopup(popupHtml, { maxWidth: 320 });
             m.addTo(trafficLayer);
+            if (isNew) scheduleAutoPopup(m, 2);
         }
         _prevTrafficKeys = nextKeys;
     }
@@ -747,6 +767,7 @@
                     '</div>';
                 m.bindPopup(popupHtml, { maxWidth: 320 });
                 m.addTo(newsLayer);
+                if (isNew) scheduleAutoPopup(m, 1);
             });
             _prevNewsKeys = nextKeys;
         });
