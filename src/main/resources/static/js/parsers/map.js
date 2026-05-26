@@ -685,26 +685,30 @@
         } catch (e) { return false; }
     }
 
-    /* ========== 신규 마커 팝업 자동 표시 (30초, 지도 이동 포함) ========== */
-    var _autoPopupT   = null;
-    var _autoCloseT   = null;
-    var _autoPopupPri = 0;
+    /* ========== 신규 마커 팝업 큐 (10초씩 순서대로) ========== */
+    var _popupQueue   = [];   // { marker, pri }
+    var _popupRunning = false;
+
+    function _nextPopup() {
+        if (!_popupQueue.length) { _popupRunning = false; return; }
+        _popupRunning = true;
+        var item = _popupQueue.shift();
+        var m = item.marker;
+        if (map) map.panTo(m.getLatLng(), { animate: true, duration: 0.4 });
+        setTimeout(function () {
+            m.openPopup();
+            setTimeout(function () {
+                m.closePopup();
+                _nextPopup();   // 다음 항목
+            }, 10000);
+        }, 500);
+    }
 
     function scheduleAutoPopup(marker, pri) {
-        if (_autoPopupT && pri <= _autoPopupPri) return;
-        if (_autoPopupT) clearTimeout(_autoPopupT);
-        _autoPopupPri = pri;
-        _autoPopupT = setTimeout(function () {
-            _autoPopupT   = null;
-            _autoPopupPri = 0;
-            if (_autoCloseT) clearTimeout(_autoCloseT);
-            // 마커 위치로 지도 이동 후 팝업 오픈
-            if (map) map.panTo(marker.getLatLng(), { animate: true, duration: 0.5 });
-            setTimeout(function () {
-                marker.openPopup();
-                _autoCloseT = setTimeout(function () { marker.closePopup(); }, 30000);
-            }, 600);
-        }, 400);
+        // 우선순위 높은 것이 앞으로
+        _popupQueue.push({ marker: marker, pri: pri });
+        _popupQueue.sort(function (a, b) { return b.pri - a.pri; });
+        if (!_popupRunning) _nextPopup();
     }
 
     function emergencyLevel(step) {
@@ -779,8 +783,12 @@
         if (!ensureMap()) return;
         trafficLayer.clearLayers();
         const root = H.unwrap(strJson, 'trafficJson');
-        const items = (root && root.body && Array.isArray(root.body.items)) ? root.body.items : [];
-        if (!items.length) return;
+        const raw = (root && root.body && Array.isArray(root.body.items)) ? root.body.items : [];
+        if (!raw.length) return;
+        // startDate 내림차순 정렬 → 항상 같은 순서로 상위 50개 처리 (순서 변동으로 인한 오탐 방지)
+        const items = raw.slice().sort(function (a, b) {
+            return String(b.startDate || '').localeCompare(String(a.startDate || ''));
+        });
         const nextKeys = new Set();
         const max = Math.min(items.length, 50);
         for (let i = 0; i < max; i++) {

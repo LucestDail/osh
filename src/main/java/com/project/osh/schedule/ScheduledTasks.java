@@ -26,12 +26,19 @@ public class ScheduledTasks {
     }
 
     /**
-     * 60\ucd08 \uc8fc\uae30: \uc7ac\ub09c/\uad50\ud1b5/\ub274\uc2a4 \uce90\uc2dc \uac31\uc2e0.
-     * initialDelay 2\ucd08: \ubd80\ud305 \uc9c1\ud6c4 \ucca0\uc218\uc758 \uace0\ub9bd\uc744 \ub9c9\uace0 \uad6c\ub3c5\uc790\uc5d0\uac8c \uc2e4\ub370\uc774\ud130\ub97c \uc870\uae30 \uc804\ub2ec.
+     * 재난문자: 10분 주기 (개발 계정 일 500회 제한 — 3일치×3회/사이클 = 144회/일).
+     * initialDelay 2초: 부팅 직후 첫 수집.
      */
-    @Scheduled(initialDelay = 2_000, fixedDelay = 60_000)
-    public void renewFrequent() {
+    @Scheduled(initialDelay = 2_000, fixedDelay = 600_000)
+    public void renewEmergency() {
         safe("emergency", dashboardService::renewEmergencyJsonObject);
+    }
+
+    /**
+     * 60초 주기: 교통/뉴스 캐시 갱신.
+     */
+    @Scheduled(initialDelay = 3_000, fixedDelay = 60_000)
+    public void renewFrequent() {
         safe("traffic",   dashboardService::renewTrafficJsonObject);
         safe("news",      dashboardService::renewNewsYeonhapJsonObject);
     }
