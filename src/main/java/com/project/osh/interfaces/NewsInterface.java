@@ -1,36 +1,39 @@
 package com.project.osh.interfaces;
 
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
+import java.util.TimeZone;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-import com.project.osh.controller.DashboardController;
 import com.project.osh.util.HttpUtil;
 
+@Component
 public class NewsInterface {
 
-    private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
-	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+    private static final Logger log = LoggerFactory.getLogger(NewsInterface.class);
+    private static final String SAFETY_NEWS_URL = "https://www.safetydata.go.kr/V2/api/DSSP-IF-00051";
 
-	@Value("${osh.logging}")
-    private boolean loggingFlag;
+    @Value("${osh.api.safety-news.key}")
+    private String apiKey;
 
-    public String getYeonhapNews(){
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
-		java.util.TimeZone seoul = java.util.TimeZone.getTimeZone ( "Asia/Seoul" );
-        sdf.setTimeZone ( seoul ) ;
-        String strToday = sdf.format(System.currentTimeMillis());
-        String strYeonhapNews = "";
-		try {
-	        strYeonhapNews = new HttpUtil().executeGet("https://www.safetydata.go.kr/V2/api/DSSP-IF-00051?serviceKey=0J2DA743WA9JIQIP&inqDt="+strToday);
-		}catch(Exception e) {
-			log.error("뉴스 정보 API 호출 중 오류 발생: {}", e.getMessage());
-		}
-        return strYeonhapNews;
+    private final HttpUtil http;
+
+    public NewsInterface(HttpUtil http) {
+        this.http = http;
     }
-    
+
+    public String getYeonhapNews() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+        sdf.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
+        String strToday = sdf.format(System.currentTimeMillis());
+        try {
+            return http.executeGet(SAFETY_NEWS_URL + "?serviceKey=" + apiKey + "&inqDt=" + strToday);
+        } catch (Exception e) {
+            log.error("\ub274\uc2a4 \uc815\ubcf4 API \ud638\ucd9c \uc911 \uc624\ub958 \ubc1c\uc0dd: {}", e.getMessage());
+            return "";
+        }
+    }
 }

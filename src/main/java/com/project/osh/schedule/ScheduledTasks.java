@@ -1,8 +1,5 @@
 package com.project.osh.schedule;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,14 +7,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.project.osh.controller.DashboardController;
 import com.project.osh.service.DashboardService;
 
 @Component
 public class ScheduledTasks {
 
-	private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
-	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+	private static final Logger log = LoggerFactory.getLogger(ScheduledTasks.class);
 
 	@Value("${osh.logging}")
     private boolean loggingFlag;

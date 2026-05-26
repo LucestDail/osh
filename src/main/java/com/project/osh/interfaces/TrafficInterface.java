@@ -1,38 +1,34 @@
 package com.project.osh.interfaces;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import com.project.osh.controller.DashboardController;
 import com.project.osh.util.HttpUtil;
 
 @Component
 public class TrafficInterface {
 
-    private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
-	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
-	@Value("${osh.logging}")
-    private boolean loggingFlag;
-    
-    public String getTrafficInfo(){
-        String strTrafficInfo = "";
-		try {
-	        strTrafficInfo = new HttpUtil().executeGet("https://openapi.its.go.kr:9443/eventInfo?apiKey=409b7fa7f23c4baf956e166d78b97726&type=all&eventType=all&getType=json");
-		}catch(Exception e) {
-			log.error("교통 정보 API 호출 중 오류 발생: {}", e.getMessage());
-			// 에러 발생 시 빈 JSON 구조 반환
-			strTrafficInfo = "{\"body\":{\"items\":[]}}";
-		}
-        return strTrafficInfo;
+    private static final Logger log = LoggerFactory.getLogger(TrafficInterface.class);
+    private static final String ITS_EVENT_INFO_URL = "https://openapi.its.go.kr:9443/eventInfo";
+
+    @Value("${osh.api.its-traffic.key}")
+    private String apiKey;
+
+    private final HttpUtil http;
+
+    public TrafficInterface(HttpUtil http) {
+        this.http = http;
+    }
+
+    public String getTrafficInfo() {
+        try {
+            String url = ITS_EVENT_INFO_URL + "?apiKey=" + apiKey + "&type=all&eventType=all&getType=json";
+            return http.executeGet(url);
+        } catch (Exception e) {
+            log.error("\uad50\ud1b5 \uc815\ubcf4 API \ud638\ucd9c \uc911 \uc624\ub958 \ubc1c\uc0dd: {}", e.getMessage());
+            return "{\"body\":{\"items\":[]}}";
+        }
     }
 }

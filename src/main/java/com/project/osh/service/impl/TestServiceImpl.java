@@ -9,11 +9,15 @@ import com.project.osh.util.JsonUtil;
 
 @Service
 public class TestServiceImpl implements TestService {
-    
-    public JsonObject getWeatherJsonObject(){
-        JsonUtil ju = new JsonUtil();
-        JsonObject weatherJson = ju.getJson(new InterfaceCore().getWeatherInfo());
-        return weatherJson;
+
+    private final InterfaceCore interfaceCore;
+    private final JsonUtil jsonUtil = new JsonUtil();
+
+    public TestServiceImpl(InterfaceCore interfaceCore) {
+        this.interfaceCore = interfaceCore;
     }
-    
+
+    public JsonObject getWeatherJsonObject() {
+        return jsonUtil.getJson(interfaceCore.getWeatherInfo());
+    }
 }

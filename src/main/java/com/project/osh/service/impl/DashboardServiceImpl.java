@@ -4,27 +4,23 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
-import com.project.osh.controller.DashboardController;
 import com.project.osh.interfaces.InterfaceCore;
 import com.project.osh.service.DashboardService;
 import com.project.osh.service.NewsService;
 import com.project.osh.util.JsonUtil;
 
 @Service
-public class DashboardServiceImpl implements DashboardService{
+public class DashboardServiceImpl implements DashboardService {
 
-    private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
-	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+    private static final Logger log = LoggerFactory.getLogger(DashboardServiceImpl.class);
 
     private static JsonObject weatherJsonObject;
     private static JsonObject weatherJsonObject1;
@@ -49,11 +45,13 @@ public class DashboardServiceImpl implements DashboardService{
 
     OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
 
-    @Autowired
-    private NewsService newsService;
+    private final NewsService newsService;
+    private final InterfaceCore interfaceCore;
+    private final JsonUtil jsonUtil = new JsonUtil();
 
-    // 생성자에서 초기 데이터 로드
-    public DashboardServiceImpl() {
+    public DashboardServiceImpl(NewsService newsService, InterfaceCore interfaceCore) {
+        this.newsService = newsService;
+        this.interfaceCore = interfaceCore;
         // 초기 날씨 데이터 로드
         updateWeatherData();
         lastWeatherUpdate = System.currentTimeMillis();
@@ -193,7 +191,7 @@ public class DashboardServiceImpl implements DashboardService{
                 String cityName = cities[i][0];
                 String lat = cities[i][1];
                 String lon = cities[i][2];
-                String weatherJson = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon)).toString();
+                String weatherJson = jsonUtil.getJson(interfaceCore.getWeatherInfo(lat, lon)).toString();
                 weatherJsonObject.addProperty("weatherJson" + (i + 1), weatherJson);
             }
         } catch (Exception e) {
@@ -203,34 +201,34 @@ public class DashboardServiceImpl implements DashboardService{
 
     @Override
     public JsonObject getWeatherJsonObject() {
-        if(weatherJsonObject == null) weatherJsonObject = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo());
+        if(weatherJsonObject == null) weatherJsonObject = jsonUtil.getJson(interfaceCore.getWeatherInfo());
         return weatherJsonObject;
     }
 
     @Override
     public JsonObject getWeatherJsonObject(String lat, String lon) {
-        if(weatherJsonObject == null) weatherJsonObject = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
+        if(weatherJsonObject == null) weatherJsonObject = jsonUtil.getJson(interfaceCore.getWeatherInfo(lat, lon));
         return weatherJsonObject;
     }
 
     @Override
     public JsonObject getWeatherJsonObject1(String lat, String lon) {
-        if(weatherJsonObject1 == null) weatherJsonObject1 = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
+        if(weatherJsonObject1 == null) weatherJsonObject1 = jsonUtil.getJson(interfaceCore.getWeatherInfo(lat, lon));
         return weatherJsonObject1;
     }
 
     @Override
     public JsonObject getWeatherJsonObject2(String lat, String lon) {
-        if(weatherJsonObject2 == null) weatherJsonObject2 = new JsonUtil().getJson(new InterfaceCore().getWeatherInfo(lat, lon));
+        if(weatherJsonObject2 == null) weatherJsonObject2 = jsonUtil.getJson(interfaceCore.getWeatherInfo(lat, lon));
         return weatherJsonObject2;
     }
 
     @Override
     public void renewWeatherJsonObject(){
         try {
-            String weatherInfo = new InterfaceCore().getWeatherInfo();
+            String weatherInfo = interfaceCore.getWeatherInfo();
             if (weatherInfo != null && !weatherInfo.trim().isEmpty()) {
-                weatherJsonObject = new JsonUtil().getJson(weatherInfo);
+                weatherJsonObject = jsonUtil.getJson(weatherInfo);
             } else {
                 log.warn("날씨 정보가 null이거나 비어있습니다. 기존 데이터 유지");
             }
@@ -242,9 +240,9 @@ public class DashboardServiceImpl implements DashboardService{
     @Override
     public void renewWeatherJsonObject(String lat, String lon){
         try {
-            String weatherInfo = new InterfaceCore().getWeatherInfo(lat, lon);
+            String weatherInfo = interfaceCore.getWeatherInfo(lat, lon);
             if (weatherInfo != null && !weatherInfo.trim().isEmpty()) {
-                weatherJsonObject = new JsonUtil().getJson(weatherInfo);
+                weatherJsonObject = jsonUtil.getJson(weatherInfo);
             } else {
                 log.warn("날씨 정보가 null이거나 비어있습니다. 기존 데이터 유지");
             }
@@ -256,9 +254,9 @@ public class DashboardServiceImpl implements DashboardService{
     @Override
     public void renewWeatherJsonObject1(String lat, String lon){
         try {
-            String weatherInfo = new InterfaceCore().getWeatherInfo(lat, lon);
+            String weatherInfo = interfaceCore.getWeatherInfo(lat, lon);
             if (weatherInfo != null && !weatherInfo.trim().isEmpty()) {
-                weatherJsonObject1 = new JsonUtil().getJson(weatherInfo);
+                weatherJsonObject1 = jsonUtil.getJson(weatherInfo);
             } else {
                 log.warn("날씨 정보1이 null이거나 비어있습니다. 기존 데이터 유지");
             }
@@ -270,9 +268,9 @@ public class DashboardServiceImpl implements DashboardService{
     @Override
     public void renewWeatherJsonObject2(String lat, String lon){
         try {
-            String weatherInfo = new InterfaceCore().getWeatherInfo(lat, lon);
+            String weatherInfo = interfaceCore.getWeatherInfo(lat, lon);
             if (weatherInfo != null && !weatherInfo.trim().isEmpty()) {
-                weatherJsonObject2 = new JsonUtil().getJson(weatherInfo);
+                weatherJsonObject2 = jsonUtil.getJson(weatherInfo);
             } else {
                 log.warn("날씨 정보2가 null이거나 비어있습니다. 기존 데이터 유지");
             }
@@ -321,7 +319,7 @@ public class DashboardServiceImpl implements DashboardService{
     public JsonObject getTrafficJsonObject() {
         try {
             if(trafficJsonObject == null) {
-                trafficJsonObject = new JsonUtil().getJson(new InterfaceCore().getTrafficInfo());
+                trafficJsonObject = jsonUtil.getJson(interfaceCore.getTrafficInfo());
             }
             return trafficJsonObject;
         } catch (Exception e) {
@@ -333,9 +331,9 @@ public class DashboardServiceImpl implements DashboardService{
     @Override
     public void renewTrafficJsonObject(){
         try {
-            String trafficInfo = new InterfaceCore().getTrafficInfo();
+            String trafficInfo = interfaceCore.getTrafficInfo();
             if (trafficInfo != null && !trafficInfo.trim().isEmpty()) {
-                trafficJsonObject = new JsonUtil().getJson(trafficInfo);
+                trafficJsonObject = jsonUtil.getJson(trafficInfo);
             } else {
                 log.warn("교통 정보가 null이거나 비어있습니다. 기존 데이터 유지");
                 // 기존 데이터 유지
@@ -362,7 +360,7 @@ public class DashboardServiceImpl implements DashboardService{
     public JsonObject getEmergencyJsonObject() {
         try {
             if(emergencyJsonObject == null) {
-                emergencyJsonObject = new JsonUtil().getJson(new InterfaceCore().getEmergencyInfo());
+                emergencyJsonObject = jsonUtil.getJson(interfaceCore.getEmergencyInfo());
             }
             return emergencyJsonObject;
         } catch (Exception e) {
@@ -374,9 +372,9 @@ public class DashboardServiceImpl implements DashboardService{
     @Override
     public void renewEmergencyJsonObject(){
         try {
-            String emergencyInfo = new InterfaceCore().getEmergencyInfo();
+            String emergencyInfo = interfaceCore.getEmergencyInfo();
             if (emergencyInfo != null && !emergencyInfo.trim().isEmpty()) {
-                emergencyJsonObject = new JsonUtil().getJson(emergencyInfo);
+                emergencyJsonObject = jsonUtil.getJson(emergencyInfo);
             } else {
                 log.warn("긴급재난문자 정보가 null이거나 비어있습니다. 기존 데이터 유지");
                 // 기존 데이터 유지

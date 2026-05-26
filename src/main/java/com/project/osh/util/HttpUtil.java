@@ -7,7 +7,14 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-public class HttpUtil{
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+@Component
+public class HttpUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(HttpUtil.class);
     
     public String executeGet(String targetURL) {
         HttpURLConnection connection = null;
@@ -36,7 +43,7 @@ public class HttpUtil{
             rd.close();
             return response.toString();
         }catch(Exception e){
-            e.printStackTrace();
+            log.error("HTTP GET \uc2e4\ud328 [{}]: {}", targetURL, e.getMessage());
             return null;
         }finally{
             if(connection != null){
@@ -79,7 +86,7 @@ public class HttpUtil{
             rd.close();
             return response.toString();
         }catch(Exception e){
-            e.printStackTrace();
+            log.error("HTTP POST \uc2e4\ud328 [{}]: {}", targetURL, e.getMessage());
             return null;
         }finally{
             if(connection != null){

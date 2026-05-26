@@ -1,41 +1,38 @@
 package com.project.osh.interfaces;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import com.project.osh.controller.DashboardController;
 import com.project.osh.util.HttpUtil;
 
 @Component
-public class WeatherInterface{
+public class WeatherInterface {
 
-	private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
-	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
-    @Value("${osh.logging}")
-    private boolean loggingFlag;
-    
-    public String getOpenweathermap(){
-        String strWeatherInfo = "";
-		try {
-	        strWeatherInfo = new HttpUtil().executeGet("https://api.openweathermap.org/data/2.5/weather?lat=37.245807&lon=127.057375&appid=e9ba762681ab8a0aa1e50fe52895b0eb");
-		}catch(Exception e) {
-			log.error("날씨 정보 API 호출 중 오류 발생: {}", e.getMessage());
-		}
-        return strWeatherInfo;
+    private static final Logger log = LoggerFactory.getLogger(WeatherInterface.class);
+    private static final String OPENWEATHER_URL = "https://api.openweathermap.org/data/2.5/weather";
+
+    @Value("${osh.api.openweather.key}")
+    private String apiKey;
+
+    private final HttpUtil http;
+
+    public WeatherInterface(HttpUtil http) {
+        this.http = http;
     }
 
-	public String getOpenweathermap(String lat, String lon){
-        String strWeatherInfo = "";
-		try {
-	        strWeatherInfo = new HttpUtil().executeGet("https://api.openweathermap.org/data/2.5/weather?lat="+lat+"&lon="+lon+"&appid=e9ba762681ab8a0aa1e50fe52895b0eb");
-		}catch(Exception e) {
-			log.error("날씨 정보 API 호출 중 오류 발생: {}", e.getMessage());
-		}
-        return strWeatherInfo;
+    public String getOpenweathermap() {
+        return getOpenweathermap("37.245807", "127.057375");
+    }
+
+    public String getOpenweathermap(String lat, String lon) {
+        try {
+            String url = OPENWEATHER_URL + "?lat=" + lat + "&lon=" + lon + "&appid=" + apiKey;
+            return http.executeGet(url);
+        } catch (Exception e) {
+            log.error("\ub0a0\uc528 \uc815\ubcf4 API \ud638\ucd9c \uc911 \uc624\ub958 \ubc1c\uc0dd: {}", e.getMessage());
+            return "";
+        }
     }
 }

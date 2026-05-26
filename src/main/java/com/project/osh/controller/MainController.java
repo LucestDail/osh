@@ -1,9 +1,5 @@
 package com.project.osh.controller;
 
-import java.text.SimpleDateFormat;
-import java.time.Duration;
-import java.util.Date;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -22,8 +18,7 @@ import org.slf4j.LoggerFactory;
 @RequestMapping
 public class MainController {
 
-    private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
-	private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+    private static final Logger log = LoggerFactory.getLogger(MainController.class);
 
     @Value("${osh.logging}")
     private boolean loggingFlag;
@@ -71,7 +66,7 @@ public class MainController {
         try{
             doc = Jsoup.connect(strUrl).get();
         }catch(Exception e){
-            e.printStackTrace();
+            log.error("jsoup fetch \uc2e4\ud328: {}", e.getMessage());
         }
         if(doc != null){
             strHtml = doc.html();
