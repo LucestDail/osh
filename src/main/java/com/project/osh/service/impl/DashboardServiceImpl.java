@@ -4,153 +4,133 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.util.TimeZone;
+import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.project.osh.config.OshProperties;
 import com.project.osh.interfaces.InterfaceCore;
 import com.project.osh.service.DashboardService;
 import com.project.osh.service.NewsService;
 import com.project.osh.util.JsonUtil;
+
+import jakarta.annotation.PostConstruct;
 
 @Service
 public class DashboardServiceImpl implements DashboardService {
 
     private static final Logger log = LoggerFactory.getLogger(DashboardServiceImpl.class);
 
-    private static JsonObject weatherJsonObject;
-    private static JsonObject weatherJsonObject1;
-    private static JsonObject weatherJsonObject2;
-    private static JsonObject trafficJsonObject;
-    private static JsonObject emergencyJsonObject;
-    private static JsonObject yeonhapJsonObject;
-    private static JsonObject applicationJsonObject;
-    
-    private static long lastWeatherUpdate = 0;
-    private static long lastTrafficUpdate = 0;
-    private static long lastEmergencyUpdate = 0;
-    private static long lastNewsUpdate = 0;
-    
-    private static final long WEATHER_UPDATE_INTERVAL = 3600000; // 1시간
-    private static final long TRAFFIC_UPDATE_INTERVAL = 300000;  // 5분
-    private static final long EMERGENCY_UPDATE_INTERVAL = 300000; // 5분
-    private static final long NEWS_UPDATE_INTERVAL = 300000;     // 5분
+    private static final long WEATHER_UPDATE_INTERVAL = 3_600_000L; // 1\uc2dc\uac04
+    private static final long TRAFFIC_UPDATE_INTERVAL = 300_000L;   // 5\ubd84
+    private static final long EMERGENCY_UPDATE_INTERVAL = 300_000L; // 5\ubd84
+    private static final long NEWS_UPDATE_INTERVAL = 300_000L;      // 5\ubd84
+
+    // \uc778\uc2a4\ud134\uc2a4 \ucea0\uc2dc (\uc774\uc804: static \uc774\uc5c8\uc74c)
+    private volatile JsonObject weatherJsonObject;
+    private volatile JsonObject trafficJsonObject;
+    private volatile JsonObject emergencyJsonObject;
+    private volatile JsonObject yeonhapJsonObject;
+
+    private volatile long lastWeatherUpdate = 0;
+    private volatile long lastTrafficUpdate = 0;
+    private volatile long lastEmergencyUpdate = 0;
+    private volatile long lastNewsUpdate = 0;
 
     @Value("${osh.logging}")
     private boolean loggingFlag;
 
-    OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
+    private final OperatingSystemMXBean osBean = ManagementFactory.getPlatformMXBean(OperatingSystemMXBean.class);
 
     private final NewsService newsService;
     private final InterfaceCore interfaceCore;
+    private final OshProperties properties;
     private final JsonUtil jsonUtil = new JsonUtil();
 
-    public DashboardServiceImpl(NewsService newsService, InterfaceCore interfaceCore) {
+    public DashboardServiceImpl(NewsService newsService,
+                                InterfaceCore interfaceCore,
+                                OshProperties properties) {
         this.newsService = newsService;
         this.interfaceCore = interfaceCore;
-        // 초기 날씨 데이터 로드
-        updateWeatherData();
-        lastWeatherUpdate = System.currentTimeMillis();
-        
-        // 외부 API 호출은 지연시켜 애플리케이션 시작 속도 개선
-        // 초기에는 빈 객체로 설정하고, 첫 요청 시에 로드
-        trafficJsonObject = new JsonObject();
-        JsonObject trafficDataObject = new JsonObject();
-        JsonArray trafficEmptyArray = new JsonArray();
-        trafficDataObject.add("body", trafficEmptyArray);
-        trafficJsonObject.add("items", trafficEmptyArray);
-        lastTrafficUpdate = System.currentTimeMillis();
-        
-        // 재난 정보도 초기에는 빈 객체로 설정
-        emergencyJsonObject = new JsonObject();
-        JsonObject emergencyDataObject = new JsonObject();
-        JsonArray emergencyEmptyArray = new JsonArray();
-        emergencyDataObject.add("items", emergencyEmptyArray);
-        emergencyJsonObject.add("data", emergencyDataObject);
-        lastEmergencyUpdate = System.currentTimeMillis();
-        
-        // 뉴스 데이터는 NewsService가 초기화된 후에 로드하도록 지연
-        // 초기에는 빈 객체로 설정
-        yeonhapJsonObject = new JsonObject();
-        JsonObject dataObject = new JsonObject();
-        JsonArray emptyArray = new JsonArray();
-        JsonObject emptyNewsObject = new JsonObject();
-        emptyNewsObject.addProperty("createDT", "");
-        emptyNewsObject.addProperty("company", "");
-        emptyNewsObject.addProperty("title", "서비스 초기화 중입니다...");
-        emptyNewsObject.addProperty("content", "뉴스 서비스가 준비되지 않았습니다.");
-        emptyArray.add(emptyNewsObject);
-        dataObject.add("items", emptyArray);
-        yeonhapJsonObject.add("data", dataObject);
-        lastNewsUpdate = System.currentTimeMillis();
+        this.properties = properties;
+
+        // \ubd80\ud305 \uc9c0\uc5f0 \ubc29\uc9c0\ub97c \uc704\ud574 \ucea0\uc2dc\ub294 \ube48 \uac1d\uccb4\ub85c \ucd08\uae30\ud654.
+        // \uc2e4\uc81c \uc678\ubd80 API \ud638\ucd9c\uc740 @PostConstruct \uc5d0\uc11c \ube44\ub3d9\uae30\ub85c.
+        long now = System.currentTimeMillis();
+        weatherJsonObject = new JsonObject();
+        trafficJsonObject = wrapEmptyItems();
+        emergencyJsonObject = wrapEmptyItems();
+        yeonhapJsonObject = wrapInitMessage("\uc11c\ube44\uc2a4 \ucd08\uae30\ud654 \uc911\uc785\ub2c8\ub2e4...", "\ub274\uc2a4 \uc11c\ube44\uc2a4\uac00 \uc900\ube44\ub418\uc9c0 \uc54a\uc558\uc2b5\ub2c8\ub2e4.");
+        lastWeatherUpdate = now;
+        lastTrafficUpdate = now;
+        lastEmergencyUpdate = now;
+        lastNewsUpdate = now;
     }
+
+    /**
+     * \uc560\ud50c \uc2dc\uc791 \ud6c4 \ube44\ub3d9\uae30\ub85c \ucd08\uae30 \ub0a0\uc528 \uc801\uc7ac.
+     * \uc774\uc804\uc5d0\ub294 \uc0dd\uc131\uc790\uc5d0\uc11c 19\ub3c4\uc2dc \ub3d9\uae30 \ud638\ucd9c\ub85c \uc810\uc720\ub418\uc5c8\uc74c (\ubd80\ud305 23\ucd08 \u2192 \ubaa9\ud45c <5\ucd08).
+     */
+    @PostConstruct
+    void initAsync() {
+        CompletableFuture.runAsync(() -> {
+            try {
+                long t0 = System.currentTimeMillis();
+                updateWeatherData();
+                lastWeatherUpdate = System.currentTimeMillis();
+                if (loggingFlag) {
+                    log.info("\ucd08\uae30 \ub0a0\uc528 \ub85c\ub4dc \uc644\ub8cc ({} ms, {} cities)",
+                            System.currentTimeMillis() - t0, properties.getCities().size());
+                }
+            } catch (Exception e) {
+                log.error("\ucd08\uae30 \ub0a0\uc528 \ub85c\ub4dc \uc2e4\ud328: {}", e.getMessage());
+            }
+        });
+    }
+
+    // ===== \uc870\ud68c =====
 
     @Override
     public JsonObject getDashboardJsonObject() {
         long currentTime = System.currentTimeMillis();
         JsonObject jsonObject = new JsonObject();
-        
+
         try {
-            // 날씨 정보 (1시간마다 갱신)
             if (currentTime - lastWeatherUpdate >= WEATHER_UPDATE_INTERVAL) {
                 updateWeatherData();
                 lastWeatherUpdate = currentTime;
             }
-            if (weatherJsonObject != null) {
-                jsonObject.addProperty("weatherJson", weatherJsonObject.toString());
-            } else {
-                jsonObject.addProperty("weatherJson", "{}");
-            }
-            
-            // 교통 정보 (5분마다 갱신)
+            jsonObject.addProperty("weatherJson", weatherJsonObject != null ? weatherJsonObject.toString() : "{}");
+
             if (currentTime - lastTrafficUpdate >= TRAFFIC_UPDATE_INTERVAL) {
-                trafficJsonObject = getTrafficJsonObject();
+                renewTrafficJsonObject();
                 lastTrafficUpdate = currentTime;
             }
-            if (trafficJsonObject != null) {
-                jsonObject.addProperty("trafficJson", trafficJsonObject.toString());
-            } else {
-                jsonObject.addProperty("trafficJson", "{}");
-            }
-            
-            // 재난 정보 (5분마다 갱신)
+            jsonObject.addProperty("trafficJson", trafficJsonObject != null ? trafficJsonObject.toString() : "{}");
+
             if (currentTime - lastEmergencyUpdate >= EMERGENCY_UPDATE_INTERVAL) {
-                emergencyJsonObject = getEmergencyJsonObject();
+                renewEmergencyJsonObject();
                 lastEmergencyUpdate = currentTime;
             }
-            if (emergencyJsonObject != null) {
-                jsonObject.addProperty("emergencyJson", emergencyJsonObject.toString());
-            } else {
-                jsonObject.addProperty("emergencyJson", "{}");
-            }
-            
-            // 뉴스 정보 (5분마다 갱신)
+            jsonObject.addProperty("emergencyJson", emergencyJsonObject != null ? emergencyJsonObject.toString() : "{}");
+
             if (currentTime - lastNewsUpdate >= NEWS_UPDATE_INTERVAL) {
-                yeonhapJsonObject = getNewsYeonhapJsonObject();
+                renewNewsYeonhapJsonObject();
                 lastNewsUpdate = currentTime;
             }
-            if (yeonhapJsonObject != null) {
-                jsonObject.addProperty("yeonhapJson", yeonhapJsonObject.toString());
-            } else {
-                jsonObject.addProperty("yeonhapJson", "{}");
-            }
-            
-            // 서버 정보 (매번 갱신)
-            applicationJsonObject = getApplicationJsonObject();
-            if (applicationJsonObject != null) {
-                jsonObject.addProperty("applicationJson", applicationJsonObject.toString());
-            } else {
-                jsonObject.addProperty("applicationJson", "{}");
-            }
-            
+            jsonObject.addProperty("yeonhapJson", yeonhapJsonObject != null ? yeonhapJsonObject.toString() : "{}");
+
+            jsonObject.addProperty("applicationJson", getApplicationJsonObject().toString());
+
             return jsonObject;
         } catch (Exception e) {
-            log.error("Error getting dashboard data: {}", e.getMessage());
-            // 에러 발생 시에도 기본 구조의 JSON 반환
+            log.error("\ub300\uc2dc\ubcf4\ub4dc \ub370\uc774\ud130 \uc870\ud569 \uc2e4\ud328: {}", e.getMessage());
             JsonObject errorJson = new JsonObject();
             errorJson.addProperty("weatherJson", "{}");
             errorJson.addProperty("trafficJson", "{}");
@@ -161,327 +141,216 @@ public class DashboardServiceImpl implements DashboardService {
         }
     }
 
-    private void updateWeatherData() {
-        weatherJsonObject = new JsonObject();
-        try {
-            // 20개 도시의 위도/경도 정보
-            String[][] cities = {
-                {"서울", "37.5665", "126.9780"},  // 서울
-                {"부산", "35.1796", "129.0756"},  // 부산
-                {"인천", "37.4563", "126.7052"},  // 인천
-                {"대구", "35.8687", "128.5990"},  // 대구
-                {"대전", "36.3505", "127.3750"},  // 대전
-                {"광주", "35.1600", "126.8514"},  // 광주
-                {"수원", "37.2636", "127.0286"},  // 수원
-                {"울산", "35.5384", "129.3114"},  // 울산
-                {"고양", "37.6584", "126.8320"},  // 고양
-                {"용인", "37.2411", "127.1776"},  // 용인
-                {"포항", "36.0320", "129.3650"},  // 포항
-                {"창원", "35.2273", "128.6817"},  // 창원
-                {"김해", "35.2284", "128.8893"},  // 김해
-                {"김천", "36.1398", "128.1136"},  // 김천
-                {"제주", "33.4996", "126.5312"},  // 제주
-                {"춘천", "37.8813", "127.7300"},  // 춘천
-                {"원주", "37.3442", "127.9200"},  // 원주
-                {"강릉", "37.7519", "128.8960"},  // 강릉
-                {"속초", "38.2070", "128.5928"}   // 속초
-            };
-
-            for (int i = 0; i < cities.length; i++) {
-                String cityName = cities[i][0];
-                String lat = cities[i][1];
-                String lon = cities[i][2];
-                String weatherJson = jsonUtil.getJson(interfaceCore.getWeatherInfo(lat, lon)).toString();
-                weatherJsonObject.addProperty("weatherJson" + (i + 1), weatherJson);
-            }
-        } catch (Exception e) {
-            log.error("Error updating weather data: {}", e.getMessage());
-        }
-    }
-
-    @Override
-    public JsonObject getWeatherJsonObject() {
-        if(weatherJsonObject == null) weatherJsonObject = jsonUtil.getJson(interfaceCore.getWeatherInfo());
-        return weatherJsonObject;
-    }
-
-    @Override
-    public JsonObject getWeatherJsonObject(String lat, String lon) {
-        if(weatherJsonObject == null) weatherJsonObject = jsonUtil.getJson(interfaceCore.getWeatherInfo(lat, lon));
-        return weatherJsonObject;
-    }
-
-    @Override
-    public JsonObject getWeatherJsonObject1(String lat, String lon) {
-        if(weatherJsonObject1 == null) weatherJsonObject1 = jsonUtil.getJson(interfaceCore.getWeatherInfo(lat, lon));
-        return weatherJsonObject1;
-    }
-
-    @Override
-    public JsonObject getWeatherJsonObject2(String lat, String lon) {
-        if(weatherJsonObject2 == null) weatherJsonObject2 = jsonUtil.getJson(interfaceCore.getWeatherInfo(lat, lon));
-        return weatherJsonObject2;
-    }
-
-    @Override
-    public void renewWeatherJsonObject(){
-        try {
-            String weatherInfo = interfaceCore.getWeatherInfo();
-            if (weatherInfo != null && !weatherInfo.trim().isEmpty()) {
-                weatherJsonObject = jsonUtil.getJson(weatherInfo);
-            } else {
-                log.warn("날씨 정보가 null이거나 비어있습니다. 기존 데이터 유지");
-            }
-        } catch (Exception e) {
-            log.error("Error renewing weather data: {}", e.getMessage());
-        }
-    }
-
-    @Override
-    public void renewWeatherJsonObject(String lat, String lon){
-        try {
-            String weatherInfo = interfaceCore.getWeatherInfo(lat, lon);
-            if (weatherInfo != null && !weatherInfo.trim().isEmpty()) {
-                weatherJsonObject = jsonUtil.getJson(weatherInfo);
-            } else {
-                log.warn("날씨 정보가 null이거나 비어있습니다. 기존 데이터 유지");
-            }
-        } catch (Exception e) {
-            log.error("Error renewing weather data: {}", e.getMessage());
-        }
-    }
-
-    @Override
-    public void renewWeatherJsonObject1(String lat, String lon){
-        try {
-            String weatherInfo = interfaceCore.getWeatherInfo(lat, lon);
-            if (weatherInfo != null && !weatherInfo.trim().isEmpty()) {
-                weatherJsonObject1 = jsonUtil.getJson(weatherInfo);
-            } else {
-                log.warn("날씨 정보1이 null이거나 비어있습니다. 기존 데이터 유지");
-            }
-        } catch (Exception e) {
-            log.error("Error renewing weather data1: {}", e.getMessage());
-        }
-    }
-
-    @Override
-    public void renewWeatherJsonObject2(String lat, String lon){
-        try {
-            String weatherInfo = interfaceCore.getWeatherInfo(lat, lon);
-            if (weatherInfo != null && !weatherInfo.trim().isEmpty()) {
-                weatherJsonObject2 = jsonUtil.getJson(weatherInfo);
-            } else {
-                log.warn("날씨 정보2가 null이거나 비어있습니다. 기존 데이터 유지");
-            }
-        } catch (Exception e) {
-            log.error("Error renewing weather data2: {}", e.getMessage());
-        }
-    }
-
     @Override
     public JsonObject getApplicationJsonObject() {
         JsonObject jsonObject = new JsonObject();
-        SimpleDateFormat seoulSdf = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-        java.util.TimeZone seoul = java.util.TimeZone.getTimeZone("Asia/Seoul");
-        seoulSdf.setTimeZone(seoul);
-        
-        // 메모리 정보 계산 (MB 단위)
+        SimpleDateFormat seoulSdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        seoulSdf.setTimeZone(TimeZone.getTimeZone("Asia/Seoul"));
+
         long totalMemory = Runtime.getRuntime().totalMemory() / (1024 * 1024);
         long freeMemory = Runtime.getRuntime().freeMemory() / (1024 * 1024);
         long usedMemory = totalMemory - freeMemory;
-        
+
         jsonObject.addProperty("currentTime", seoulSdf.format(new Timestamp(System.currentTimeMillis())));
-        jsonObject.addProperty("systemArchitecture", osBean.getArch().toString());
-        jsonObject.addProperty("systemName",osBean.getName().toString());
-        jsonObject.addProperty("systemVersion",osBean.getVersion().toString());
-        jsonObject.addProperty("systemLoadAverage",osBean.getSystemLoadAverage());
+        jsonObject.addProperty("systemArchitecture", osBean.getArch());
+        jsonObject.addProperty("systemName", osBean.getName());
+        jsonObject.addProperty("systemVersion", osBean.getVersion());
+        jsonObject.addProperty("systemLoadAverage", osBean.getSystemLoadAverage());
         jsonObject.addProperty("memory", totalMemory + "MB");
         jsonObject.addProperty("useMemory", usedMemory + "MB");
         jsonObject.addProperty("freeMemory", freeMemory + "MB");
-        jsonObject.addProperty("availableProcessors", (Runtime.getRuntime().availableProcessors()));
+        jsonObject.addProperty("availableProcessors", Runtime.getRuntime().availableProcessors());
         return jsonObject;
     }
 
+    // ===== \ub0a0\uc528 =====
+
     @Override
-    public JsonObject getTrafficWrapperJson(){
-        JsonObject jsonObject = new JsonObject();
-        JsonObject trafficData = getTrafficJsonObject();
-        if (trafficData != null) {
-            jsonObject.addProperty("trafficJson", trafficData.toString());
-        } else {
-            jsonObject.addProperty("trafficJson", "{}");
+    public JsonObject getWeatherJsonObject() {
+        if (weatherJsonObject == null) {
+            weatherJsonObject = jsonUtil.getJson(interfaceCore.getWeatherInfo());
         }
+        return weatherJsonObject;
+    }
+
+    @Override
+    public void renewWeatherJsonObject() {
+        try {
+            updateWeatherData();
+            lastWeatherUpdate = System.currentTimeMillis();
+        } catch (Exception e) {
+            log.error("\ub0a0\uc528 \uc804\uccb4 \uac31\uc2e0 \uc2e4\ud328: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 19\ub3c4\uc2dc \ub0a0\uc528 \ub3d9\uae30 \uc870\ud68c \u2192 weatherJsonObject \uad50\uccb4.
+     * (\ud5a5\ud6c4 E \uc791\uc5c5\uc5d0\uc11c WebClient \ubcd1\ub82c\ub85c \uad50\uccb4 \uc608\uc815)
+     */
+    private void updateWeatherData() {
+        JsonObject next = new JsonObject();
+        int i = 1;
+        for (OshProperties.City city : properties.getCities()) {
+            try {
+                String raw = interfaceCore.getWeatherInfo(city.getLat(), city.getLon());
+                String wjson = jsonUtil.getJson(raw).toString();
+                next.addProperty("weatherJson" + i, wjson);
+            } catch (Exception e) {
+                log.warn("city={} \ub0a0\uc528 \uc870\ud68c \uc2e4\ud328: {}", city.getName(), e.getMessage());
+            }
+            i++;
+        }
+        weatherJsonObject = next;
+    }
+
+    // ===== \uad50\ud1b5 =====
+
+    @Override
+    public JsonObject getTrafficWrapperJson() {
+        JsonObject jsonObject = new JsonObject();
+        JsonObject data = getTrafficJsonObject();
+        jsonObject.addProperty("trafficJson", data != null ? data.toString() : "{}");
         return jsonObject;
     }
 
     @Override
     public JsonObject getTrafficJsonObject() {
         try {
-            if(trafficJsonObject == null) {
+            if (trafficJsonObject == null) {
                 trafficJsonObject = jsonUtil.getJson(interfaceCore.getTrafficInfo());
             }
             return trafficJsonObject;
         } catch (Exception e) {
-            log.error("Error getting traffic data: {}", e.getMessage());
+            log.error("\uad50\ud1b5 \ub370\uc774\ud130 \uc870\ud68c \uc2e4\ud328: {}", e.getMessage());
             return null;
         }
     }
 
     @Override
-    public void renewTrafficJsonObject(){
+    public void renewTrafficJsonObject() {
         try {
             String trafficInfo = interfaceCore.getTrafficInfo();
             if (trafficInfo != null && !trafficInfo.trim().isEmpty()) {
                 trafficJsonObject = jsonUtil.getJson(trafficInfo);
             } else {
-                log.warn("교통 정보가 null이거나 비어있습니다. 기존 데이터 유지");
-                // 기존 데이터 유지
+                log.warn("\uad50\ud1b5 \uc815\ubcf4\uac00 \ube44\uc5b4\uc788\uc74c. \uae30\uc874 \uce90\uc2dc \uc720\uc9c0");
             }
         } catch (Exception e) {
-            log.error("Error renewing traffic data: {}", e.getMessage());
-            // 에러 발생 시에도 기존 데이터 유지
+            log.error("\uad50\ud1b5 \uac31\uc2e0 \uc2e4\ud328: {}", e.getMessage());
         }
     }
 
+    // ===== \uc7ac\ub09c =====
+
     @Override
-    public JsonObject getEmergencyWrapperJson(){
+    public JsonObject getEmergencyWrapperJson() {
         JsonObject jsonObject = new JsonObject();
-        JsonObject emergencyData = getEmergencyJsonObject();
-        if (emergencyData != null) {
-            jsonObject.addProperty("emergencyJson", emergencyData.toString());
-        } else {
-            jsonObject.addProperty("emergencyJson", "{}");
-        }
+        JsonObject data = getEmergencyJsonObject();
+        jsonObject.addProperty("emergencyJson", data != null ? data.toString() : "{}");
         return jsonObject;
     }
 
     @Override
     public JsonObject getEmergencyJsonObject() {
         try {
-            if(emergencyJsonObject == null) {
+            if (emergencyJsonObject == null) {
                 emergencyJsonObject = jsonUtil.getJson(interfaceCore.getEmergencyInfo());
             }
             return emergencyJsonObject;
         } catch (Exception e) {
-            log.error("Error getting emergency data: {}", e.getMessage());
+            log.error("\uae34\uae09\uc7ac\ub09c \uc870\ud68c \uc2e4\ud328: {}", e.getMessage());
             return null;
         }
     }
 
     @Override
-    public void renewEmergencyJsonObject(){
+    public void renewEmergencyJsonObject() {
         try {
-            String emergencyInfo = interfaceCore.getEmergencyInfo();
-            if (emergencyInfo != null && !emergencyInfo.trim().isEmpty()) {
-                emergencyJsonObject = jsonUtil.getJson(emergencyInfo);
+            String info = interfaceCore.getEmergencyInfo();
+            if (info != null && !info.trim().isEmpty()) {
+                emergencyJsonObject = jsonUtil.getJson(info);
             } else {
-                log.warn("긴급재난문자 정보가 null이거나 비어있습니다. 기존 데이터 유지");
-                // 기존 데이터 유지
+                log.warn("\uae34\uae09\uc7ac\ub09c \uc815\ubcf4\uac00 \ube44\uc5b4\uc788\uc74c. \uae30\uc874 \uce90\uc2dc \uc720\uc9c0");
             }
         } catch (Exception e) {
-            log.error("Error renewing emergency data: {}", e.getMessage());
-            // 에러 발생 시에도 기존 데이터 유지
+            log.error("\uae34\uae09\uc7ac\ub09c \uac31\uc2e0 \uc2e4\ud328: {}", e.getMessage());
         }
     }
 
+    // ===== \ub274\uc2a4 =====
+
     @Override
-    public JsonObject getYeonhapWrapperJson(){
+    public JsonObject getYeonhapWrapperJson() {
         JsonObject jsonObject = new JsonObject();
-        JsonObject yeonhapData = getNewsYeonhapJsonObject();
-        if (yeonhapData != null) {
-            jsonObject.addProperty("yeonhapJson", yeonhapData.toString());
-        } else {
-            jsonObject.addProperty("yeonhapJson", "{}");
-        }
+        JsonObject data = getNewsYeonhapJsonObject();
+        jsonObject.addProperty("yeonhapJson", data != null ? data.toString() : "{}");
         return jsonObject;
     }
 
     @Override
     public JsonObject getNewsYeonhapJsonObject() {
         try {
-            if(yeonhapJsonObject == null) {
-                // NewsServiceImpl의 cachedNews 데이터 사용
-                yeonhapJsonObject = new JsonObject();
-                JsonObject dataObject = new JsonObject();
-                
-                // newsService가 null인 경우 처리
-                if (newsService != null) {
-                    dataObject.add("items", newsService.getCachedNews());
-                } else {
-                    log.warn("NewsService is null, creating empty news data");
-                    JsonArray emptyArray = new JsonArray();
-                    JsonObject emptyNewsObject = new JsonObject();
-                    emptyNewsObject.addProperty("createDT", "");
-                    emptyNewsObject.addProperty("company", "");
-                    emptyNewsObject.addProperty("title", "서비스 초기화 중입니다...");
-                    emptyNewsObject.addProperty("content", "뉴스 서비스가 준비되지 않았습니다.");
-                    emptyArray.add(emptyNewsObject);
-                    dataObject.add("items", emptyArray);
-                }
-                
-                yeonhapJsonObject.add("data", dataObject);
+            if (yeonhapJsonObject == null) {
+                yeonhapJsonObject = buildNewsObject();
             }
             return yeonhapJsonObject;
         } catch (Exception e) {
-            log.error("Error getting news data: {}", e.getMessage());
-            // 에러 발생 시에도 기본 구조의 JSON 반환
-            JsonObject errorJson = new JsonObject();
-            JsonObject dataObject = new JsonObject();
-            JsonArray errorArray = new JsonArray();
-            JsonObject errorNewsObject = new JsonObject();
-            errorNewsObject.addProperty("createDT", "");
-            errorNewsObject.addProperty("company", "");
-            errorNewsObject.addProperty("title", "데이터 로드 중 오류가 발생했습니다");
-            errorNewsObject.addProperty("content", "잠시 후 다시 시도해주세요.");
-            errorArray.add(errorNewsObject);
-            dataObject.add("items", errorArray);
-            errorJson.add("data", dataObject);
-            return errorJson;
+            log.error("\ub274\uc2a4 \uc870\ud68c \uc2e4\ud328: {}", e.getMessage());
+            return wrapInitMessage("\ub370\uc774\ud130 \ub85c\ub4dc \uc911 \uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4", "\uc7a0\uc2dc \ud6c4 \ub2e4\uc2dc \uc2dc\ub3c4\ud574\uc8fc\uc138\uc694.");
         }
     }
 
     @Override
-    public void renewNewsYeonhapJsonObject(){
+    public void renewNewsYeonhapJsonObject() {
         try {
-            // NewsServiceImpl의 cachedNews 데이터로 갱신
-            yeonhapJsonObject = new JsonObject();
-            JsonObject dataObject = new JsonObject();
-            
-            // newsService가 null인 경우 처리
-            if (newsService != null) {
-                dataObject.add("items", newsService.getCachedNews());
-            } else {
-                log.warn("NewsService is null during renewal, creating empty news data");
-                JsonArray emptyArray = new JsonArray();
-                JsonObject emptyNewsObject = new JsonObject();
-                emptyNewsObject.addProperty("createDT", "");
-                emptyNewsObject.addProperty("company", "");
-                emptyNewsObject.addProperty("title", "서비스 초기화 중입니다...");
-                emptyNewsObject.addProperty("content", "뉴스 서비스가 준비되지 않았습니다.");
-                emptyArray.add(emptyNewsObject);
-                dataObject.add("items", emptyArray);
-            }
-            
-            yeonhapJsonObject.add("data", dataObject);
+            yeonhapJsonObject = buildNewsObject();
         } catch (Exception e) {
-            log.error("Error renewing news data: {}", e.getMessage());
-            // 에러 발생 시에도 기본 구조 유지
-            try {
-                yeonhapJsonObject = new JsonObject();
-                JsonObject dataObject = new JsonObject();
-                JsonArray errorArray = new JsonArray();
-                JsonObject errorNewsObject = new JsonObject();
-                errorNewsObject.addProperty("createDT", "");
-                errorNewsObject.addProperty("company", "");
-                errorNewsObject.addProperty("title", "데이터 갱신 중 오류가 발생했습니다");
-                errorNewsObject.addProperty("content", "잠시 후 다시 시도해주세요.");
-                errorArray.add(errorNewsObject);
-                dataObject.add("items", errorArray);
-                yeonhapJsonObject.add("data", dataObject);
-            } catch (Exception innerException) {
-                log.error("Error creating error response for news data: {}", innerException.getMessage());
-            }
+            log.error("\ub274\uc2a4 \uac31\uc2e0 \uc2e4\ud328: {}", e.getMessage());
+            yeonhapJsonObject = wrapInitMessage("\ub370\uc774\ud130 \uac31\uc2e0 \uc911 \uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4", "\uc7a0\uc2dc \ud6c4 \ub2e4\uc2dc \uc2dc\ub3c4\ud574\uc8fc\uc138\uc694.");
         }
+    }
+
+    private JsonObject buildNewsObject() {
+        JsonObject root = new JsonObject();
+        JsonObject data = new JsonObject();
+        if (newsService != null) {
+            data.add("items", newsService.getCachedNews());
+        } else {
+            log.warn("NewsService is null \u2014 \uc784\uc2dc \uc744 \uba54\uc2dc\uc9c0\ub85c \uad50\uccb4");
+            data.add("items", emptyNewsArray("\uc11c\ube44\uc2a4 \ucd08\uae30\ud654 \uc911\uc785\ub2c8\ub2e4..."));
+        }
+        root.add("data", data);
+        return root;
+    }
+
+    // ===== \ud5ec\ud37c =====
+
+    private JsonObject wrapEmptyItems() {
+        JsonObject root = new JsonObject();
+        root.add("items", new JsonArray());
+        return root;
+    }
+
+    private JsonObject wrapInitMessage(String title, String content) {
+        JsonObject root = new JsonObject();
+        JsonObject data = new JsonObject();
+        data.add("items", emptyNewsArray(title, content));
+        root.add("data", data);
+        return root;
+    }
+
+    private JsonArray emptyNewsArray(String title) {
+        return emptyNewsArray(title, "\uc7a0\uc2dc \ud6c4 \ub2e4\uc2dc \uc2dc\ub3c4\ud574\uc8fc\uc138\uc694.");
+    }
+
+    private JsonArray emptyNewsArray(String title, String content) {
+        JsonArray arr = new JsonArray();
+        JsonObject obj = new JsonObject();
+        obj.addProperty("createDT", "");
+        obj.addProperty("company", "");
+        obj.addProperty("title", title);
+        obj.addProperty("content", content);
+        arr.add(obj);
+        return arr;
     }
 }

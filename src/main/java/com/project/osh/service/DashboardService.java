@@ -2,43 +2,36 @@ package com.project.osh.service;
 
 import com.google.gson.JsonObject;
 
+/**
+ * \ub300\uc2dc\ubcf4\ub4dc \uc6c0\uc9c1\uc774\ub294 \ub370\uc774\ud130 \uc81c\uacf5/\uac31\uc2e0 \uba85\uc138.
+ * - get* \ub294 \ucea0\uc2dc\ub41c \ucd5c\uadfc \uac12 \ubc18\ud658 (null \uc548\uc804).
+ * - renew* \ub294 \uc678\ubd80 API \ud638\ucd9c\ub85c \ucea0\uc2dc \uac31\uc2e0.
+ */
 public interface DashboardService {
 
-    public JsonObject getDashboardJsonObject();
+    JsonObject getDashboardJsonObject();
 
-    public JsonObject getWeatherJsonObject();
+    JsonObject getApplicationJsonObject();
 
-    public void renewWeatherJsonObject();
+    JsonObject getWeatherJsonObject();
 
-    public JsonObject getWeatherJsonObject(String lat, String lon);
+    void renewWeatherJsonObject();
 
-    public void renewWeatherJsonObject(String lat, String lon);
+    JsonObject getTrafficWrapperJson();
 
-    public JsonObject getWeatherJsonObject1(String lat, String lon);
+    JsonObject getTrafficJsonObject();
 
-    public void renewWeatherJsonObject1(String lat, String lon);
+    void renewTrafficJsonObject();
 
-    public JsonObject getWeatherJsonObject2(String lat, String lon);
+    JsonObject getEmergencyWrapperJson();
 
-    public void renewWeatherJsonObject2(String lat, String lon);
+    JsonObject getEmergencyJsonObject();
 
-    public JsonObject getApplicationJsonObject();
+    void renewEmergencyJsonObject();
 
-    public JsonObject getTrafficWrapperJson();
+    JsonObject getYeonhapWrapperJson();
 
-    public JsonObject getTrafficJsonObject();
+    JsonObject getNewsYeonhapJsonObject();
 
-    public void renewTrafficJsonObject();
-
-    public JsonObject getEmergencyWrapperJson();
-
-    public JsonObject getEmergencyJsonObject();
-
-    public void renewEmergencyJsonObject();
-
-    public JsonObject getYeonhapWrapperJson();
-
-    public JsonObject getNewsYeonhapJsonObject();
-
-    public void renewNewsYeonhapJsonObject();
+    void renewNewsYeonhapJsonObject();
 }
