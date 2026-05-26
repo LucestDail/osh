@@ -94,10 +94,15 @@ public class DashboardServiceImpl implements DashboardService {
         sinks.pushEmergency(emergencyJsonObject);
         sinks.pushTraffic(trafficJsonObject);
         sinks.pushYeonhap(yeonhapJsonObject);
-        sinks.pushDashboard(getDashboardJsonObjectNoRenew());
+        sinks.pushDashboard(getDashboardSnapshot());
 
         CompletableFuture.runAsync(() -> {
             try {
+                // NewsServiceImpl \ub3c4 @PostConstruct \ube44\ub3d9\uae30 \ub85c\ub4dc(\ub300\ub7b5 1\ucd08 \uc774\ub0b4) \ud6c4 yeonhap re-emit
+                Thread.sleep(1500);
+                sinks.pushYeonhap(getYeonhapWrapperJson());
+                sinks.pushDashboard(getDashboardSnapshot());
+
                 long t0 = System.currentTimeMillis();
                 updateWeatherData();
                 lastWeatherUpdate = System.currentTimeMillis();
@@ -105,18 +110,17 @@ public class DashboardServiceImpl implements DashboardService {
                     log.info("\ucd08\uae30 \ub0a0\uc528 \ub85c\ub4dc \uc644\ub8cc ({} ms, {} cities)",
                             System.currentTimeMillis() - t0, properties.getCities().size());
                 }
-                sinks.pushDashboard(getDashboardJsonObjectNoRenew());
+                sinks.pushDashboard(getDashboardSnapshot());
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
             } catch (Exception e) {
-                log.error("\ucd08\uae30 \ub0a0\uc528 \ub85c\ub4dc \uc2e4\ud328: {}", e.getMessage());
+                log.error("\ucd08\uae30 \ub370\uc774\ud130 \ub85c\ub4dc \uc2e4\ud328: {}", e.getMessage());
             }
         });
     }
 
-    /**
-     * \ucea0\uc2dc\ub9cc \ubcf4\uace0 \ub9cc\ub4dc\ub294 dashboard \uad6c\uc870 (\ucea0\uc2dc \uad50\uccb4 \ud2b8\ub9ac\uac70 X).
-     * \uc2dc\uc791 \uc2dc\uc810\uacfc renew \uc774\ud6c4 push \uc6a9.
-     */
-    private JsonObject getDashboardJsonObjectNoRenew() {
+    @Override
+    public JsonObject getDashboardSnapshot() {
         JsonObject jsonObject = new JsonObject();
         jsonObject.addProperty("weatherJson", weatherJsonObject != null ? weatherJsonObject.toString() : "{}");
         jsonObject.addProperty("trafficJson", trafficJsonObject != null ? trafficJsonObject.toString() : "{}");
@@ -210,7 +214,7 @@ public class DashboardServiceImpl implements DashboardService {
         try {
             updateWeatherData();
             lastWeatherUpdate = System.currentTimeMillis();
-            sinks.pushDashboard(getDashboardJsonObjectNoRenew());
+            sinks.pushDashboard(getDashboardSnapshot());
         } catch (Exception e) {
             log.error("\ub0a0\uc528 \uc804\uccb4 \uac31\uc2e0 \uc2e4\ud328: {}", e.getMessage());
         }
@@ -282,7 +286,7 @@ public class DashboardServiceImpl implements DashboardService {
             if (trafficInfo != null && !trafficInfo.trim().isEmpty()) {
                 trafficJsonObject = jsonUtil.getJson(trafficInfo);
                 sinks.pushTraffic(getTrafficWrapperJson());
-                sinks.pushDashboard(getDashboardJsonObjectNoRenew());
+                sinks.pushDashboard(getDashboardSnapshot());
             } else {
                 log.warn("\uad50\ud1b5 \uc815\ubcf4\uac00 \ube44\uc5b4\uc788\uc74c. \uae30\uc874 \uce90\uc2dc \uc720\uc9c0");
             }
@@ -321,7 +325,7 @@ public class DashboardServiceImpl implements DashboardService {
             if (info != null && !info.trim().isEmpty()) {
                 emergencyJsonObject = jsonUtil.getJson(info);
                 sinks.pushEmergency(getEmergencyWrapperJson());
-                sinks.pushDashboard(getDashboardJsonObjectNoRenew());
+                sinks.pushDashboard(getDashboardSnapshot());
             } else {
                 log.warn("\uae34\uae09\uc7ac\ub09c \uc815\ubcf4\uac00 \ube44\uc5b4\uc788\uc74c. \uae30\uc874 \uce90\uc2dc \uc720\uc9c0");
             }
@@ -358,7 +362,7 @@ public class DashboardServiceImpl implements DashboardService {
         try {
             yeonhapJsonObject = buildNewsObject();
             sinks.pushYeonhap(getYeonhapWrapperJson());
-            sinks.pushDashboard(getDashboardJsonObjectNoRenew());
+            sinks.pushDashboard(getDashboardSnapshot());
         } catch (Exception e) {
             log.error("\ub274\uc2a4 \uac31\uc2e0 \uc2e4\ud328: {}", e.getMessage());
             yeonhapJsonObject = wrapInitMessage("\ub370\uc774\ud130 \uac31\uc2e0 \uc911 \uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4", "\uc7a0\uc2dc \ud6c4 \ub2e4\uc2dc \uc2dc\ub3c4\ud574\uc8fc\uc138\uc694.");

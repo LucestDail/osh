@@ -11,6 +11,12 @@ public interface DashboardService {
 
     JsonObject getDashboardJsonObject();
 
+    /**
+     * \uce90\uc2dc\ub9cc \ubcf4\uace0 \uc989\uc2dc \uc9c1\ub82c\ud654\ud55c \ub300\uc2dc\ubcf4\ub4dc \uc2a4\ub0c5\uc0f7.
+     * renew \ud2b8\ub9ac\uac70 X. SSE \uc8fc\uae30\uc801 push tick \uc6a9.
+     */
+    JsonObject getDashboardSnapshot();
+
     JsonObject getApplicationJsonObject();
 
     JsonObject getWeatherJsonObject();
