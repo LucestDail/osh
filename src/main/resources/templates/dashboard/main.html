@@ -21,8 +21,6 @@
       })();
     </script>
 
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <link rel="stylesheet"
           href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -48,6 +46,29 @@
         </div>
     </div>
 </nav>
+
+<!-- 서버 지표 status bar (헤더 바로 아래, 한 줄) -->
+<div class="status-bar" id="statusBar">
+    <div class="status-bar__inner">
+        <span class="status-bar__item" title="OS">
+            <span class="status-bar__label">OS</span>
+            <span class="status-bar__val" id="systemName">-</span>
+        </span>
+        <span class="status-bar__item" title="아키텍처">
+            <span class="status-bar__label">ARCH</span>
+            <span class="status-bar__val" id="systemArchitecture">-</span>
+        </span>
+        <span class="status-bar__item" title="시스템 평균 부하">
+            <span class="status-bar__label">LOAD</span>
+            <span class="status-bar__val" id="systemLoad">-</span>
+        </span>
+        <span class="status-bar__item status-bar__item--bar" title="JVM 메모리">
+            <span class="status-bar__label">MEM</span>
+            <span class="status-bar__bar"><span class="status-bar__bar-fill" id="memBarFill"></span></span>
+            <span class="status-bar__val" id="memText">- / -</span>
+        </span>
+    </div>
+</div>
 
 <main class="page">
     <section class="grid grid--tri">
@@ -190,24 +211,6 @@
                         <button class="pager__btn" data-act="next" aria-label="다음">›</button>
                     </div>
                 </section>
-            </div>
-        </article>
-
-        <!-- (4) 서버 지표 (하단 와이드, 컴팩트) -->
-        <article class="card card--server">
-            <header class="card__header">
-                <h2 class="card__title"><span class="card__icon">⚙</span>서버 지표</h2>
-            </header>
-            <div class="card__body card__body--server">
-                <div class="chart-wrap chart-wrap--mini"><canvas id="memoryChart"></canvas></div>
-                <div class="server-grid">
-                    <div class="server-cell"><div class="server-cell__label">아키텍처</div><div class="server-cell__value" id="systemArchitecture">-</div></div>
-                    <div class="server-cell"><div class="server-cell__label">OS</div><div class="server-cell__value" id="systemName">-</div></div>
-                    <div class="server-cell"><div class="server-cell__label">Load Avg</div><div class="server-cell__value" id="systemLoad">-</div></div>
-                    <div class="server-cell"><div class="server-cell__label">총 메모리</div><div class="server-cell__value" id="totalMemory">-</div></div>
-                    <div class="server-cell"><div class="server-cell__label">사용 중</div><div class="server-cell__value" id="usedMemory">-</div></div>
-                    <div class="server-cell"><div class="server-cell__label">여유</div><div class="server-cell__value" id="freeMemory">-</div></div>
-                </div>
             </div>
         </article>
 

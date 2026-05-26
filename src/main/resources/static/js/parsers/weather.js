@@ -65,7 +65,7 @@
 
     const pager = window.OSH.pager.create({
         name: 'weather',
-        pageSize: 6,
+        pageSize: 10,
         onRender: function (slice) {
             const h = host();
             if (!h) return;

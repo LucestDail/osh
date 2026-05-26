@@ -35,8 +35,17 @@
         return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
 
-    // 남한 권역 bbox (대략): SW=[33.0, 125.8], NE=[38.7, 130.0]
-    const KR_BOUNDS = [[33.0, 125.8], [38.7, 130.0]];
+    // 19도시가 분포한 남한 본토 bbox (제주는 살짝 잘리지만 마커가 보이도록 약간만 포함)
+    //   SW=[34.0, 126.4], NE=[38.5, 129.9]
+    const KR_BOUNDS = [[34.0, 126.4], [38.5, 129.9]];
+    const MAX_FIT_ZOOM = 8.5;
+
+    function fitToKorea() {
+        if (!map) return;
+        try {
+            map.fitBounds(KR_BOUNDS, { padding: [4, 4], maxZoom: MAX_FIT_ZOOM, animate: false });
+        } catch (e) { /* noop */ }
+    }
 
     function ensureMap() {
         if (map) return map;
@@ -48,15 +57,21 @@
             zoomControl: true,
             attributionControl: true,
             scrollWheelZoom: false,
-            zoomSnap: 0.25
+            zoomSnap: 0.25,
+            maxZoom: 14,
+            minZoom: 6
         });
-        // 카드 폭과 무관하게 항상 한반도가 꽉 차게
-        map.fitBounds(KR_BOUNDS, { padding: [6, 6] });
+        fitToKorea();
 
         // 카드 사이즈가 처음 0 으로 잡힐 수 있어 한번 재계산
         setTimeout(function () {
-            try { map.invalidateSize(); map.fitBounds(KR_BOUNDS, { padding: [6, 6] }); } catch (e) { /* noop */ }
-        }, 200);
+            try { map.invalidateSize(); fitToKorea(); } catch (e) { /* noop */ }
+        }, 250);
+        // window resize 대응
+        window.addEventListener('resize', function () {
+            if (!map) return;
+            try { map.invalidateSize(); fitToKorea(); } catch (e) { /* noop */ }
+        });
 
         applyTile();
         weatherLayer   = L.layerGroup().addTo(map);
@@ -121,8 +136,8 @@
         return L.divIcon({
             className: '',
             html: html,
-            iconSize: [54, 32],
-            iconAnchor: [27, 16]
+            iconSize: [46, 28],
+            iconAnchor: [23, 14]
         });
     }
 
@@ -131,8 +146,8 @@
         return L.divIcon({
             className: '',
             html: '<div class="' + cls + '"><span class="osh-mk__pulse"></span></div>',
-            iconSize: [18, 18],
-            iconAnchor: [9, 9]
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
         });
     }
 
@@ -140,8 +155,8 @@
         return L.divIcon({
             className: '',
             html: '<div class="osh-mk osh-mk--traffic">⚠</div>',
-            iconSize: [14, 14],
-            iconAnchor: [7, 7]
+            iconSize: [10, 10],
+            iconAnchor: [5, 5]
         });
     }
 

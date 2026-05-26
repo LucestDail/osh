@@ -28,7 +28,7 @@
 
     const pager = window.OSH.pager.create({
         name: 'emergency',
-        pageSize: 8,
+        pageSize: 18,
         onRender: function (slice) {
             const tbody = document.getElementById('emergencyTbody');
             if (!tbody) return;

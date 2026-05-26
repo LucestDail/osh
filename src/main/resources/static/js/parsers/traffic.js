@@ -19,7 +19,7 @@
 
     const pager = window.OSH.pager.create({
         name: 'traffic',
-        pageSize: 10,
+        pageSize: 20,
         onRender: function (slice) {
             const tbody = document.getElementById('trafficTbody');
             if (!tbody) return;

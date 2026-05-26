@@ -50,6 +50,8 @@
             if (label) label.textContent = (items.length === 0 ? '0 / 0' : (page + 1) + ' / ' + tp);
             if (btnPrev) btnPrev.disabled = (page <= 0);
             if (btnNext) btnNext.disabled = (page >= tp - 1);
+            // 한 페이지로 다 보이면 페이저 자체를 숨겨서 공간 확보
+            if (root) root.hidden = (tp <= 1);
         }
 
         if (btnPrev) btnPrev.addEventListener('click', function () { if (page > 0) { page--; draw(); }});

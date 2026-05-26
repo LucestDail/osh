@@ -23,7 +23,7 @@
 
     const pager = window.OSH.pager.create({
         name: 'news',
-        pageSize: 8,
+        pageSize: 15,
         onRender: function (slice) {
             const tbody = document.getElementById('newsTbody');
             if (!tbody) return;

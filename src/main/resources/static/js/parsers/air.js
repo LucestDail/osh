@@ -52,7 +52,7 @@
 
     const pager = window.OSH.pager.create({
         name: 'air',
-        pageSize: 8,
+        pageSize: 18,   // AirKorea 시도 17개 → 한 페이지에 다 보이게
         onRender: function (slice) {
             const host = document.getElementById('airGrid');
             if (!host) return;
