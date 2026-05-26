@@ -553,8 +553,10 @@
         return 'info';
     }
 
-    function emergencyDivIcon(level) {
-        const cls = 'osh-mk osh-mk--emr osh-mk--emr-' + (level || 'info');
+    var _prevEmrKeys = new Set();
+
+    function emergencyDivIcon(level, isNew) {
+        const cls = 'osh-mk osh-mk--emr osh-mk--emr-' + (level || 'info') + (isNew ? ' is-new' : '');
         return L.divIcon({
             className: '',
             html: '<div class="' + cls + '"><span class="osh-mk__pulse"></span></div>',
@@ -570,13 +572,21 @@
             const root = H.unwrap(strJson, 'emergencyJson');
             const items = (root && Array.isArray(root.items)) ? root.items : [];
             if (!items.length) return;
+            const nextKeys = new Set();
             const max = Math.min(items.length, 100);
             for (let i = 0; i < max; i++) {
                 const it = items[i] || {};
                 const c = lookupRegionCoord(it.RCPTN_RGN_NM);
                 if (!c) continue;
+                const key = (it.CRT_DT || '') + '|' + (it.RCPTN_RGN_NM || '');
+                const isNew = _prevEmrKeys.size > 0 && !_prevEmrKeys.has(key);
+                nextKeys.add(key);
                 const level = emergencyLevel(it.EMRG_STEP_NM);
-                const m = L.marker(c, { icon: emergencyDivIcon(level) });
+                const m = L.marker(c, { icon: emergencyDivIcon(level, isNew) });
+                const tipHtml =
+                    '<div class="osh-tip-title">' + H.esc((it.RCPTN_RGN_NM || '-').trim()) + '</div>' +
+                    '<div class="osh-tip-sub">' + H.esc(it.EMRG_STEP_NM || '') + ' · ' + H.formatDateTime(it.CRT_DT) + '</div>';
+                m.bindTooltip(tipHtml, { className: 'osh-map-tip', sticky: false, offset: [10, 0] });
                 const popupHtml =
                     '<div class="osh-popup"><b>' + H.esc(it.RCPTN_RGN_NM || '-') + '</b>' +
                     '<div class="osh-popup__time">' + H.formatDateTime(it.CRT_DT) + '</div>' +
@@ -585,15 +595,19 @@
                 m.bindPopup(popupHtml, { maxWidth: 320 });
                 m.addTo(emergencyLayer);
             }
+            _prevEmrKeys = nextKeys;
         });
     }
 
     /* ========== 교통 마커 ========== */
 
-    function trafficDivIcon() {
+    var _prevTrafficKeys = new Set();
+
+    function trafficDivIcon(isNew) {
+        const cls = 'osh-mk osh-mk--traffic' + (isNew ? ' is-new' : '');
         return L.divIcon({
             className: '',
-            html: '<div class="osh-mk osh-mk--traffic">⚠</div>',
+            html: '<div class="' + cls + '"><span class="osh-mk__pulse"></span>⚠</div>',
             iconSize: [22, 22],
             iconAnchor: [11, 11]
         });
@@ -605,6 +619,7 @@
         const root = H.unwrap(strJson, 'trafficJson');
         const items = (root && root.body && Array.isArray(root.body.items)) ? root.body.items : [];
         if (!items.length) return;
+        const nextKeys = new Set();
         const max = Math.min(items.length, 50);
         for (let i = 0; i < max; i++) {
             const it = items[i] || {};
@@ -614,7 +629,14 @@
             const lat = (x > 100 && x < 140) ? y : x;
             const lon = (x > 100 && x < 140) ? x : y;
             if (lat < 33 || lat > 39 || lon < 124 || lon > 132) continue;
-            const m = L.marker([lat, lon], { icon: trafficDivIcon() });
+            const key = (it.startDate || '') + '|' + it.coordX + '|' + it.coordY;
+            const isNew = _prevTrafficKeys.size > 0 && !_prevTrafficKeys.has(key);
+            nextKeys.add(key);
+            const m = L.marker([lat, lon], { icon: trafficDivIcon(isNew) });
+            const tipHtml =
+                '<div class="osh-tip-title">' + H.esc(it.roadName || '-') + '</div>' +
+                '<div class="osh-tip-sub">' + H.esc(it.eventType || '') + ' · ' + H.formatDateTime(it.startDate) + '</div>';
+            m.bindTooltip(tipHtml, { className: 'osh-map-tip', sticky: false, offset: [10, 0] });
             const popupHtml =
                 '<div class="osh-popup"><b>' + H.esc(it.roadName || '-') + '</b>' +
                 '<div class="osh-popup__time">' + H.formatDateTime(it.startDate) + '</div>' +
@@ -623,6 +645,7 @@
             m.bindPopup(popupHtml, { maxWidth: 320 });
             m.addTo(trafficLayer);
         }
+        _prevTrafficKeys = nextKeys;
     }
 
     /* ========== 뉴스 마커 ========== */
@@ -664,11 +687,14 @@
         return null;
     }
 
-    function newsDivIcon(count) {
+    var _prevNewsKeys = new Set();
+
+    function newsDivIcon(count, isNew) {
         const label = (count && count > 1) ? String(count) : '📰';
+        const cls = 'osh-mk osh-mk--news' + (isNew ? ' is-new' : '');
         return L.divIcon({
             className: '',
-            html: '<div class="osh-mk osh-mk--news">' + H.esc(label) + '</div>',
+            html: '<div class="' + cls + '"><span class="osh-mk__pulse"></span>' + H.esc(label) + '</div>',
             iconSize: [18, 18],
             iconAnchor: [9, 9]
         });
@@ -695,9 +721,19 @@
                 if (grouped[hit.key].items.length < 5) grouped[hit.key].items.push(n);
             }
 
+            const nextKeys = new Set();
             Object.keys(grouped).slice(0, 12).forEach(function (k) {
                 const g = grouped[k];
-                const m = L.marker(g.coord, { icon: newsDivIcon(g.items.length) });
+                const topLink = g.items[0] ? (g.items[0].link || g.items[0].title || k) : k;
+                const key = k + '|' + topLink.slice(0, 60);
+                const isNew = _prevNewsKeys.size > 0 && !_prevNewsKeys.has(key);
+                nextKeys.add(key);
+                const m = L.marker(g.coord, { icon: newsDivIcon(g.items.length, isNew) });
+                const tipTitle = g.items[0] ? H.truncate(g.items[0].title || k, 40) : k;
+                const tipHtml =
+                    '<div class="osh-tip-title">' + H.esc(k) + ' 뉴스</div>' +
+                    '<div class="osh-tip-sub">' + H.esc(tipTitle) + '</div>';
+                m.bindTooltip(tipHtml, { className: 'osh-map-tip', sticky: false, offset: [10, 0] });
                 const rows = g.items.slice(0, 3).map(function (it) {
                     const time = it.pubDate ? H.formatDateTime(it.pubDate) : '';
                     const link = it.link
@@ -712,6 +748,7 @@
                 m.bindPopup(popupHtml, { maxWidth: 320 });
                 m.addTo(newsLayer);
             });
+            _prevNewsKeys = nextKeys;
         });
     }
 

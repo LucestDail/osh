@@ -232,27 +232,59 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
 .osh-mk--emr-warning { background: var(--color-warning); }
 .osh-mk--emr-danger  { background: var(--color-danger); }
 .osh-mk__pulse { position: absolute; inset: -4px; border-radius: 50%; background: inherit;
-                 opacity: 0.4; animation: oshPulse 1.6s ease-out infinite; }
+                 opacity: 0.4; animation: oshPulse 1.6s ease-out infinite; z-index: -1; pointer-events: none; }
 @keyframes oshPulse {
     0%   { transform: scale(0.7); opacity: 0.55; }
     100% { transform: scale(1.6); opacity: 0; }
 }
 
-/* 교통 마커 (크게) */
+/* 교통 마커 */
 .osh-mk--traffic {
-    width: 22px; height: 22px;
-    background: rgba(217,76,76,0.9);
+    width: 22px; height: 22px; position: relative;
+    background: rgba(217,140,32,0.92);
     font-size: 13px;
     box-shadow: 0 1px 6px rgba(0,0,0,0.45);
 }
+.osh-mk--traffic .osh-mk__pulse { background: rgba(224,160,32,0.55); }
 
 /* 뉴스 마커 */
 .osh-mk--news {
-    width: 18px; height: 18px;
+    width: 18px; height: 18px; position: relative;
     background: rgba(99,102,241,0.95);
     font-size: 10px; color: #fff;
     border: 1.5px solid var(--color-bg-elev);
 }
+.osh-mk--news .osh-mk__pulse { background: rgba(99,102,241,0.5); }
+
+/* 신규 마커 플래시 (처음 3회 깜빡임 후 정착) */
+.osh-mk.is-new {
+    animation: oshNewFlash 0.7s ease 3 forwards;
+}
+@keyframes oshNewFlash {
+    0%   { transform: scale(1);    filter: brightness(1); }
+    40%  { transform: scale(1.45); filter: brightness(2.2);
+           box-shadow: 0 0 14px 5px rgba(255,230,50,0.85); }
+    100% { transform: scale(1);    filter: brightness(1); }
+}
+
+/* Hover tooltip */
+.leaflet-tooltip.osh-map-tip {
+    background: var(--color-bg-elev);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-2);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    line-height: 1.4;
+    padding: 5px 9px;
+    border-radius: var(--radius);
+    white-space: normal;
+    max-width: 200px;
+    pointer-events: none;
+}
+.leaflet-tooltip.osh-map-tip::before { display: none; }
+.osh-tip-title { font-weight: 600; }
+.osh-tip-sub   { color: var(--color-fg-muted); font-size: 10px; margin-top: 1px; }
 
 /* 도시 permanent label (Leaflet tooltip) */
 .leaflet-tooltip.osh-city-label {
