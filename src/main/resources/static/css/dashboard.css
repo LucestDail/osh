@@ -322,6 +322,27 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
     to   { transform: rotate(360deg); }
 }
 
+/* OWM 날씨 타일 토글 버튼 */
+.osh-wx-ctrl { margin-top: 5px !important; }
+.osh-wx-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 16px;
+    text-decoration: none;
+    cursor: pointer;
+    filter: grayscale(1);
+    opacity: 0.6;
+    transition: filter 0.2s, opacity 0.2s;
+}
+.osh-wx-btn.is-active {
+    filter: grayscale(0);
+    opacity: 1;
+    background: var(--color-primary-soft) !important;
+}
+
 /* GPS 현재 위치 마커 */
 .osh-user-loc {
     width: 14px; height: 14px;

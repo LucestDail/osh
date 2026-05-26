@@ -112,9 +112,69 @@
 
         buildLegend();
         buildLocateControl();
+        buildWeatherTileControl();
         // 페이지 로드 시 조용히 자동 위치 탐지 시도
         setTimeout(tryLocate, 600);
         return map;
+    }
+
+    /* ========== OWM 날씨 타일 오버레이 ========== */
+    let _owmCloudsLayer = null;
+    let _owmPrecipLayer = null;
+    let _owmVisible     = false;
+
+    function buildOwmLayers() {
+        const base = window.location.origin + '/osh/map-tile';
+        _owmCloudsLayer = L.tileLayer(base + '/clouds_new/{z}/{x}/{y}', {
+            opacity: 0.45,
+            maxZoom: 18,
+            attribution: '© OpenWeatherMap'
+        });
+        _owmPrecipLayer = L.tileLayer(base + '/precipitation_new/{z}/{x}/{y}', {
+            opacity: 0.6,
+            maxZoom: 18,
+            attribution: '© OpenWeatherMap'
+        });
+    }
+
+    function toggleWeatherTiles(show) {
+        _owmVisible = show;
+        if (!map) return;
+        if (!_owmCloudsLayer) buildOwmLayers();
+        if (show) {
+            _owmCloudsLayer.addTo(map);
+            _owmPrecipLayer.addTo(map);
+            // 마커 레이어는 항상 위에
+            cityLayer.bringToFront();
+            emergencyLayer.bringToFront();
+            trafficLayer.bringToFront();
+            newsLayer.bringToFront();
+        } else {
+            if (map.hasLayer(_owmCloudsLayer)) map.removeLayer(_owmCloudsLayer);
+            if (map.hasLayer(_owmPrecipLayer)) map.removeLayer(_owmPrecipLayer);
+        }
+    }
+
+    function buildWeatherTileControl() {
+        if (!map) return;
+        const ctrl = L.control({ position: 'topright' });
+        ctrl.onAdd = function () {
+            const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control osh-wx-ctrl');
+            const btn = L.DomUtil.create('a', 'osh-wx-btn', div);
+            btn.title = '구름/강수 오버레이 토글';
+            btn.innerHTML = '🌧';
+            btn.href = '#';
+            btn.setAttribute('role', 'button');
+            L.DomEvent.on(btn, 'click', function (e) {
+                L.DomEvent.stopPropagation(e);
+                L.DomEvent.preventDefault(e);
+                const next = !_owmVisible;
+                toggleWeatherTiles(next);
+                btn.classList.toggle('is-active', next);
+            });
+            return div;
+        };
+        ctrl.addTo(map);
     }
 
     function applyTile() {
@@ -205,6 +265,7 @@
         }
         if (wd) {
             html += '<div>기온 ' + wd.tempC.toFixed(1) + '°C</div>';
+            if (wd.rainMm > 0) html += '<div>강수량 🌧 ' + wd.rainMm.toFixed(1) + ' mm/h</div>';
             if (wd.humidity != null) html += '<div>습도 ' + wd.humidity + '%</div>';
             if (wd.windSpeed != null) html += '<div>바람 ' + wd.windSpeed.toFixed(1) + ' m/s</div>';
             if (wd.description) html += '<div>' + H.esc(wd.description) + '</div>';
@@ -313,6 +374,7 @@
         let html = '<div class="osh-popup"><b>' + H.esc(cityName) + '</b>';
         if (wd) {
             html += '<div>기온 ' + (wd.tempC != null ? wd.tempC.toFixed(1) : '-') + '°C</div>';
+            if (wd.rainMm > 0) html += '<div>강수량 🌧 ' + wd.rainMm.toFixed(1) + ' mm/h</div>';
             if (wd.humidity != null) html += '<div>습도 ' + wd.humidity + '%</div>';
             if (wd.windSpeed != null) html += '<div>바람 ' + wd.windSpeed.toFixed(1) + ' m/s</div>';
             if (wd.description) html += '<div>' + H.esc(wd.description) + '</div>';
@@ -328,6 +390,31 @@
         return html;
     }
 
+    function weatherFillColor(wMain) {
+        if (!wMain) return null;
+        const w = wMain.toLowerCase();
+        if (w === 'clear')                        return '#facc15'; // 맑음 - 노랑
+        if (w === 'clouds')                       return '#94a3b8'; // 흐림 - 회색
+        if (w === 'rain' || w === 'drizzle')      return '#3b82f6'; // 비 - 파랑
+        if (w === 'snow')                         return '#bae6fd'; // 눈 - 하늘
+        if (w === 'thunderstorm')                 return '#7c3aed'; // 뇌우 - 보라
+        if (w === 'mist' || w === 'fog' || w === 'haze') return '#cbd5e1'; // 안개 - 연회색
+        return null;
+    }
+
+    function cityHoverTip(name, wd) {
+        const condIcon = { Clear:'☀', Clouds:'⛅', Rain:'🌧', Drizzle:'🌦',
+                           Snow:'❄', Thunderstorm:'⛈', Mist:'🌫', Fog:'🌫', Haze:'🌫' };
+        const icon = condIcon[wd.weatherMain] || '🌡';
+        let tip = '<div class="osh-tip-title">' + H.esc(name) + ' ' + icon + '</div>';
+        const parts = [];
+        if (wd.tempC != null)    parts.push(wd.tempC.toFixed(1) + '°C');
+        if (wd.rainMm > 0)       parts.push('🌧 ' + wd.rainMm.toFixed(1) + 'mm');
+        if (wd.humidity != null) parts.push('💧 ' + wd.humidity + '%');
+        if (parts.length) tip += '<div class="osh-tip-sub">' + parts.join(' · ') + '</div>';
+        return tip;
+    }
+
     function renderCityLayer() {
         if (!cityLayer) return;
         cityLayer.clearLayers();
@@ -335,10 +422,10 @@
             const wd = _weatherByCity[name];
             if (wd.lat == null || wd.lon == null) return;
 
-            // circleMarker → 클릭 영역이 반지름 5px 의 원으로 제한돼 하위 마커 클릭 차단 없음
+            const fill = weatherFillColor(wd.weatherMain) || tempToFillColor(wd.tempC);
             const c = L.circleMarker([wd.lat, wd.lon], {
                 radius: 5,
-                fillColor: tempToFillColor(wd.tempC),
+                fillColor: fill,
                 color: '#fff',
                 weight: 1.5,
                 fillOpacity: 0.95,
@@ -352,6 +439,25 @@
                 offset: [6, 0],
                 className: 'osh-city-label',
                 interactive: false
+            });
+            // hover 툴팁 (날씨 상세)
+            c.on('mouseover', function () {
+                c.unbindTooltip();
+                c.bindTooltip(cityHoverTip(name, wd), {
+                    className: 'osh-map-tip',
+                    sticky: false,
+                    offset: [10, 0]
+                }).openTooltip();
+            });
+            c.on('mouseout', function () {
+                c.unbindTooltip();
+                c.bindTooltip(H.esc(name), {
+                    permanent: true,
+                    direction: 'right',
+                    offset: [6, 0],
+                    className: 'osh-city-label',
+                    interactive: false
+                });
             });
             c.bindPopup(buildCityPopupHtml(name), { maxWidth: 200 });
             c.addTo(cityLayer);
@@ -502,11 +608,17 @@
             if (!payload || !payload.main) return;
             const name = payload.cityName || payload.name || k;
             const tempK = payload.main.temp;
+            const wMain = payload.weather && payload.weather[0] ? payload.weather[0].main : null;
+            const rainMm = (payload.rain && payload.rain['1h']) ? payload.rain['1h']
+                         : (payload.rain && payload.rain['3h']) ? payload.rain['3h'] / 3
+                         : (payload.snow && payload.snow['1h']) ? payload.snow['1h'] : 0;
             _weatherByCity[name] = {
-                tempC: typeof tempK === 'number' ? tempK - 273.15 : null,
-                humidity: payload.main.humidity,
-                windSpeed: payload.wind ? payload.wind.speed : null,
+                tempC:       typeof tempK === 'number' ? tempK - 273.15 : null,
+                humidity:    payload.main.humidity,
+                windSpeed:   payload.wind ? payload.wind.speed : null,
                 description: payload.weather && payload.weather[0] ? payload.weather[0].description : null,
+                weatherMain: wMain,
+                rainMm:      rainMm,
                 lat: payload.coord ? payload.coord.lat : null,
                 lon: payload.coord ? payload.coord.lon : null
             };
