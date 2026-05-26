@@ -1,7 +1,7 @@
 /**
  * 날씨 파서 — 19도시 weather grid 렌더링.
  * 입력: SSE wrapper { weatherJson: "{ weatherJson1: '{...}', ...}" }
- * 각 city payload 안에 server-side 가 추가한 cityName(한글) 사용.
+ * 페이저: 6도시/페이지 (3행 x 2열)
  */
 (function () {
     'use strict';
@@ -13,7 +13,6 @@
         return (w && (w.description || w.main)) || '-';
     }
 
-    // KMA SKY: 1=맑음, 3=구름많음, 4=흐림 / PTY: 0=없음 1=비 2=비/눈 3=눈 4=소나기
     function skyLabel(sky, pty) {
         const p = Number(pty);
         if (p === 1) return '비';
@@ -36,8 +35,7 @@
         const m = f.tomorrow || {};
         const seg = function (label, b) {
             const range = ((b.tmn != null ? b.tmn : '-') + '/' + (b.tmx != null ? b.tmx : '-')) + '°';
-            return '<span>' + label + ' <b>' + range + '</b> · ' +
-                   skyLabel(b.sky, b.pty) +
+            return '<span>' + label + ' <b>' + range + '</b> · ' + skyLabel(b.sky, b.pty) +
                    (b.pop != null ? ' <b>' + b.pop + '%</b>' : '') + '</span>';
         };
         return '<div class="weather-cell__fcst">' + seg('오늘', t) + seg('내일', m) + '</div>';
@@ -54,45 +52,43 @@
                  '</div>' +
                  '<div class="weather-cell__desc">' + H.esc(desc) + '</div>' +
                  '<div class="weather-cell__meta">' +
-                   '<span>습도</span>'    + '<b>' + (main.humidity != null ? main.humidity + '%' : '-') + '</b>' +
-                   '<span>구름</span>'    + '<b>' + (payload.clouds && payload.clouds.all != null ? payload.clouds.all + '%' : '-') + '</b>' +
-                   '<span>바람</span>'    + '<b>' + (payload.wind && payload.wind.speed != null ? payload.wind.speed + ' m/s' : '-') + '</b>' +
-                   '<span>일출</span>'    + '<b>' + H.formatHm(payload.sys && payload.sys.sunrise) + '</b>' +
+                   '<span>습도</span>' + '<b>' + (main.humidity != null ? main.humidity + '%' : '-') + '</b>' +
+                   '<span>구름</span>' + '<b>' + (payload.clouds && payload.clouds.all != null ? payload.clouds.all + '%' : '-') + '</b>' +
+                   '<span>바람</span>' + '<b>' + (payload.wind && payload.wind.speed != null ? payload.wind.speed + ' m/s' : '-') + '</b>' +
+                   '<span>일출</span>' + '<b>' + H.formatHm(payload.sys && payload.sys.sunrise) + '</b>' +
                  '</div>' +
                  fcstStrip(payload.fcst) +
                '</div>';
     }
 
-    function render(strJson) {
-        const host = document.getElementById('weatherGrid');
-        if (!host) return;
-        const map = H.unwrap(strJson, 'weatherJson');
-        if (!map) {
-            host.innerHTML = '<div class="empty-state">' +
-                               '<div class="empty-state__title">날씨 정보를 불러오는 중입니다</div>' +
-                               '<div class="empty-state__hint">잠시 후 자동으로 표시됩니다</div>' +
-                             '</div>';
-            return;
+    const host = function () { return document.getElementById('weatherGrid'); };
+
+    const pager = window.OSH.pager.create({
+        name: 'weather',
+        pageSize: 6,
+        onRender: function (slice) {
+            const h = host();
+            if (!h) return;
+            if (!slice.length) {
+                h.innerHTML = '<div class="empty-state"><div class="empty-state__title">날씨 정보를 불러오는 중입니다</div></div>';
+                return;
+            }
+            h.innerHTML = slice.map(cell).join('');
         }
+    });
+
+    function render(strJson) {
+        const map = H.unwrap(strJson, 'weatherJson');
+        if (!map) { pager.update([]); return; }
         const keys = Object.keys(map).sort(function (a, b) {
             return parseInt(a.replace(/\D/g, '')) - parseInt(b.replace(/\D/g, ''));
         });
-        const cards = [];
-        let ok = 0;
+        const items = [];
         keys.forEach(function (k) {
-            const payload = H.safeParse(map[k]);
-            if (!payload || !payload.main) return;
-            cards.push(cell(payload));
-            ok++;
+            const p = H.safeParse(map[k]);
+            if (p && p.main) items.push(p);
         });
-        if (!ok) {
-            host.innerHTML = '<div class="empty-state empty-state--danger">' +
-                               '<div class="empty-state__title">날씨 데이터를 표시할 수 없습니다</div>' +
-                               '<div class="empty-state__hint">서버 응답을 확인해주세요</div>' +
-                             '</div>';
-            return;
-        }
-        host.innerHTML = cards.join('');
+        pager.update(items);
     }
 
     (window.OSH = window.OSH || {}).weather = { render: render };

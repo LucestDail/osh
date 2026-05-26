@@ -2,10 +2,11 @@ package com.project.osh.controller;
 
 import com.project.osh.service.GeminiService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
@@ -14,27 +15,8 @@ public class GeminiController {
 
     private final GeminiService geminiService;
 
-    @Autowired
     public GeminiController(GeminiService geminiService) {
         this.geminiService = geminiService;
-    }
-
-    @PostMapping("/generate")
-    public ResponseEntity<String> generateContent(@RequestBody String prompt) {
-        String response = geminiService.generateContent(prompt);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping(value = "/dashboard-summary", produces = MediaType.TEXT_PLAIN_VALUE)
-    public ResponseEntity<String> getDashboardSummary() {
-        try {
-            String summary = geminiService.generateDashboardSummary();
-            return ResponseEntity.ok(summary);
-        } catch (Exception e) {
-            log.error("Error generating dashboard summary", e);
-            return ResponseEntity.internalServerError()
-                .body("대시보드 요약을 생성하는 중 오류가 발생했습니다: " + e.getMessage());
-        }
     }
 
     /**
@@ -51,4 +33,4 @@ public class GeminiController {
                 .body("{\"error\":\"split summary 생성 실패\"}");
         }
     }
-} 
+}

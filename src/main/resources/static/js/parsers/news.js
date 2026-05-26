@@ -1,6 +1,7 @@
 /**
  * 뉴스 파서 (연합)
  * 입력 wrapper { yeonhapJson: "{ data: { items: [...] } }" }
+ * 페이저: 8건/페이지
  */
 (function () {
     'use strict';
@@ -12,34 +13,37 @@
         '서비스 초기화 중입니다...'
     ]);
 
-    function render(strJson) {
-        const tbody = document.getElementById('newsTbody');
-        if (!tbody) return;
+    function row(it) {
+        return '<tr>' +
+            '<td>' + H.formatDateTime(it.createDT) + '</td>' +
+            '<td>' + H.esc(it.title || '-') + '</td>' +
+            '<td>' + H.esc(H.truncate(it.content, 220)) + '</td>' +
+            '</tr>';
+    }
 
-        const root = H.unwrap(strJson, 'yeonhapJson');
-        const items = (root && root.data && Array.isArray(root.data.items)) ? root.data.items : [];
-
-        if (!items.length) {
-            tbody.innerHTML = H.emptyRowHtml(3, '뉴스를 불러오는 중입니다', '잠시 후 자동으로 표시됩니다');
-            return;
+    const pager = window.OSH.pager.create({
+        name: 'news',
+        pageSize: 8,
+        onRender: function (slice) {
+            const tbody = document.getElementById('newsTbody');
+            if (!tbody) return;
+            if (!slice.length) {
+                tbody.innerHTML = H.emptyRowHtml(3, '뉴스를 불러오는 중입니다', '잠시 후 자동으로 표시됩니다');
+                return;
+            }
+            tbody.innerHTML = slice.map(row).join('');
         }
+    });
+
+    function render(strJson) {
+        const root = H.unwrap(strJson, 'yeonhapJson');
+        const items = (root && root.data && Array.isArray(root.data.items)) ? root.data.items.slice() : [];
 
         if (items.length === 1 && INIT_TITLES.has(items[0].title)) {
-            tbody.innerHTML = H.emptyRowHtml(3, items[0].title, items[0].content);
+            pager.update([]);
             return;
         }
-
-        const max = Math.min(items.length, 10);
-        let html = '';
-        for (let i = 0; i < max; i++) {
-            const it = items[i] || {};
-            html += '<tr>' +
-                '<td>' + H.formatDateTime(it.createDT) + '</td>' +
-                '<td>' + H.esc(it.title || '-') + '</td>' +
-                '<td>' + H.esc(H.truncate(it.content, 300)) + '</td>' +
-                '</tr>';
-        }
-        tbody.innerHTML = html;
+        pager.update(items);
     }
 
     (window.OSH = window.OSH || {}).news = { render: render };

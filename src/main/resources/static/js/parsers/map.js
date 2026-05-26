@@ -35,6 +35,9 @@
         return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
 
+    // 남한 권역 bbox (대략): SW=[33.0, 125.8], NE=[38.7, 130.0]
+    const KR_BOUNDS = [[33.0, 125.8], [38.7, 130.0]];
+
     function ensureMap() {
         if (map) return map;
         if (typeof L === 'undefined') return null;
@@ -42,12 +45,19 @@
         if (!host) return null;
 
         map = L.map(host, {
-            center: [36.3, 127.8],
-            zoom: 7,
             zoomControl: true,
             attributionControl: true,
-            scrollWheelZoom: false
+            scrollWheelZoom: false,
+            zoomSnap: 0.25
         });
+        // 카드 폭과 무관하게 항상 한반도가 꽉 차게
+        map.fitBounds(KR_BOUNDS, { padding: [6, 6] });
+
+        // 카드 사이즈가 처음 0 으로 잡힐 수 있어 한번 재계산
+        setTimeout(function () {
+            try { map.invalidateSize(); map.fitBounds(KR_BOUNDS, { padding: [6, 6] }); } catch (e) { /* noop */ }
+        }, 200);
+
         applyTile();
         weatherLayer   = L.layerGroup().addTo(map);
         emergencyLayer = L.layerGroup().addTo(map);
@@ -111,8 +121,8 @@
         return L.divIcon({
             className: '',
             html: html,
-            iconSize: [62, 38],
-            iconAnchor: [31, 19]
+            iconSize: [54, 32],
+            iconAnchor: [27, 16]
         });
     }
 
@@ -121,8 +131,8 @@
         return L.divIcon({
             className: '',
             html: '<div class="' + cls + '"><span class="osh-mk__pulse"></span></div>',
-            iconSize: [22, 22],
-            iconAnchor: [11, 11]
+            iconSize: [18, 18],
+            iconAnchor: [9, 9]
         });
     }
 
@@ -130,8 +140,8 @@
         return L.divIcon({
             className: '',
             html: '<div class="osh-mk osh-mk--traffic">⚠</div>',
-            iconSize: [18, 18],
-            iconAnchor: [9, 9]
+            iconSize: [14, 14],
+            iconAnchor: [7, 7]
         });
     }
 

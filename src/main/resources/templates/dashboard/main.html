@@ -3,14 +3,13 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>OSH · 메인 대시보드</title>
+    <title>OSH · 실시간 안전 운영 대시보드</title>
 
     <link rel="stylesheet" th:href="@{/css/tokens.css}"     href="/css/tokens.css">
     <link rel="stylesheet" th:href="@{/css/base.css}"       href="/css/base.css">
     <link rel="stylesheet" th:href="@{/css/components.css}" href="/css/components.css">
     <link rel="stylesheet" th:href="@{/css/dashboard.css}"  href="/css/dashboard.css">
 
-    <!-- 사전 적용된 테마(localStorage) — flash 방지 -->
     <script>
       (function () {
         try {
@@ -22,10 +21,8 @@
       })();
     </script>
 
-    <!-- Chart.js (서버 정보 doughnut) -->
     <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Leaflet (전국 지도) -->
     <link rel="stylesheet"
           href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
@@ -37,7 +34,6 @@
 </head>
 <body>
 
-<!-- context-path 자동 prepend -->
 <script th:inline="javascript">
   window.CTX = /*[[@{/}]]*/ '/';
 </script>
@@ -45,206 +41,172 @@
 <nav class="app-navbar">
     <div class="app-navbar__inner">
         <a class="app-navbar__brand" th:href="@{/}" href="/">OSH</a>
-        <div class="app-navbar__links">
-            <a class="app-navbar__link is-active" th:href="@{/}" href="/">메인 대시보드</a>
-            <a class="app-navbar__link"           th:href="@{/dashboard}" href="/dashboard">AI 대시보드</a>
-        </div>
+        <div class="app-navbar__title">실시간 안전 운영 대시보드</div>
         <div class="app-navbar__actions">
+            <div class="page__clock"><span aria-hidden="true">⏱</span><span id="currentTime">--:--:--</span></div>
             <button class="theme-toggle" type="button" data-theme-toggle aria-label="다크/라이트 모드 전환"></button>
         </div>
     </div>
 </nav>
 
 <main class="page">
+    <section class="grid grid--tri">
 
-    <header class="page__header">
-        <div>
-            <h1 class="page__title">실시간 안전 운영 대시보드</h1>
-            <p class="page__subtitle">기상 · 재난문자 · 교통돌발 · 뉴스 · 서버 지표를 한눈에</p>
-        </div>
-        <div class="page__clock"><span aria-hidden="true">⏱</span><span id="currentTime">--:--:--</span></div>
-    </header>
-
-    <section class="grid">
-
-        <!-- 전국 지도 (날씨/재난/교통 통합 시각화) -->
-        <article class="card col-12">
+        <!-- (1) 전국 지도 -->
+        <article class="card card--fixed">
             <header class="card__header">
                 <h2 class="card__title">
-                    <span class="card__icon">🗺</span>
-                    전국 상황 지도
-                    <span class="badge">19도시 + 재난 + 교통</span>
+                    <span class="card__icon">🗺</span>전국 상황 지도
                 </h2>
+                <span class="badge">19도시 · 재난 · 교통</span>
             </header>
-            <div class="card__body card__body--flush">
-                <div class="map-wrap"><div id="mapCanvas"></div></div>
+            <div class="card__body card__body--flush card__body--map">
+                <div id="mapCanvas"></div>
             </div>
         </article>
 
-        <!-- AI 분할 요약 (5개 미니카드) -->
-        <article class="card col-12">
+        <!-- (2) AI 한줄 브리핑 -->
+        <article class="card card--fixed">
             <header class="card__header">
                 <h2 class="card__title">
-                    <span class="card__icon">🤖</span>
-                    AI 한줄 브리핑
-                    <span class="badge">10분 갱신</span>
+                    <span class="card__icon">🤖</span>AI 한줄 브리핑
                 </h2>
-                <button class="btn btn--ghost btn--sm" type="button" id="splitRefreshBtn">새로고침</button>
+                <div class="card__header-aux">
+                    <span class="badge" id="splitUpdated">대기 중</span>
+                    <button class="btn btn--ghost btn--sm" type="button" id="splitRefreshBtn" title="새로고침">↻</button>
+                </div>
             </header>
             <div class="card__body">
-                <div id="splitGrid" class="split-grid">
-                    <div class="split-card"><div class="split-card__title">☁ 날씨</div><span id="splitWeather">불러오는 중...</span></div>
-                    <div class="split-card"><div class="split-card__title">💨 대기질</div><span id="splitAir">불러오는 중...</span></div>
-                    <div class="split-card"><div class="split-card__title">⚠ 재난</div><span id="splitEmergency">불러오는 중...</span></div>
-                    <div class="split-card"><div class="split-card__title">🚧 교통</div><span id="splitTraffic">불러오는 중...</span></div>
-                    <div class="split-card"><div class="split-card__title">📰 뉴스</div><span id="splitNews">불러오는 중...</span></div>
+                <div class="split-list">
+                    <div class="split-row"><span class="split-row__tag">☁ 날씨</span><span class="split-row__text" id="splitWeather">불러오는 중…</span></div>
+                    <div class="split-row"><span class="split-row__tag">💨 대기질</span><span class="split-row__text" id="splitAir">불러오는 중…</span></div>
+                    <div class="split-row"><span class="split-row__tag">⚠ 재난</span><span class="split-row__text" id="splitEmergency">불러오는 중…</span></div>
+                    <div class="split-row"><span class="split-row__tag">🚧 교통</span><span class="split-row__text" id="splitTraffic">불러오는 중…</span></div>
+                    <div class="split-row"><span class="split-row__tag">📰 뉴스</span><span class="split-row__text" id="splitNews">불러오는 중…</span></div>
                 </div>
             </div>
         </article>
 
-        <!-- 19도시 날씨 카드 그리드 -->
-        <article class="card col-8">
+        <!-- (3) 정보 탭 카드 -->
+        <article class="card card--fixed">
             <header class="card__header">
-                <h2 class="card__title">
-                    <span class="card__icon">☁</span>
-                    실시간 기상정보
-                    <span class="badge badge--primary">19 도시</span>
-                </h2>
-                <span class="live-pill" id="liveMain"></span>
+                <nav class="info-tabs" role="tablist">
+                    <button class="info-tab is-active" role="tab" data-tab="weather"
+                            aria-controls="panel-weather">☁ 기상</button>
+                    <button class="info-tab" role="tab" data-tab="air"
+                            aria-controls="panel-air">💨 대기질</button>
+                    <button class="info-tab" role="tab" data-tab="emergency"
+                            aria-controls="panel-emergency">⚠ 재난</button>
+                    <button class="info-tab" role="tab" data-tab="traffic"
+                            aria-controls="panel-traffic">🚧 교통</button>
+                    <button class="info-tab" role="tab" data-tab="news"
+                            aria-controls="panel-news">📰 뉴스</button>
+                </nav>
+                <span class="live-pill" id="liveAll" title="실시간 연결 상태"></span>
             </header>
-            <div class="card__body">
-                <div id="weatherGrid" class="weather-grid">
-                    <div class="empty-state"><div class="empty-state__title">날씨 정보를 불러오는 중입니다</div></div>
-                </div>
+
+            <div class="card__body card__body--tabs">
+                <!-- weather -->
+                <section class="info-panel is-active" id="panel-weather" role="tabpanel">
+                    <div class="info-panel__content"><div id="weatherGrid" class="weather-grid"></div></div>
+                    <div class="pager" data-pager="weather">
+                        <button class="pager__btn" data-act="prev" aria-label="이전">‹</button>
+                        <span class="pager__label" id="pagerLabel-weather">0 / 0</span>
+                        <button class="pager__btn" data-act="next" aria-label="다음">›</button>
+                    </div>
+                </section>
+
+                <!-- air -->
+                <section class="info-panel" id="panel-air" role="tabpanel" hidden>
+                    <div class="info-panel__content"><div id="airGrid" class="air-grid"></div></div>
+                    <div class="pager" data-pager="air">
+                        <button class="pager__btn" data-act="prev" aria-label="이전">‹</button>
+                        <span class="pager__label" id="pagerLabel-air">0 / 0</span>
+                        <button class="pager__btn" data-act="next" aria-label="다음">›</button>
+                    </div>
+                </section>
+
+                <!-- emergency -->
+                <section class="info-panel" id="panel-emergency" role="tabpanel" hidden>
+                    <div class="info-panel__content">
+                        <table class="table table--tight">
+                            <thead>
+                                <tr>
+                                    <th style="width:96px">시각</th>
+                                    <th style="width:110px">지역</th>
+                                    <th>메시지</th>
+                                    <th style="width:60px">단계</th>
+                                </tr>
+                            </thead>
+                            <tbody id="emergencyTbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="pager" data-pager="emergency">
+                        <button class="pager__btn" data-act="prev" aria-label="이전">‹</button>
+                        <span class="pager__label" id="pagerLabel-emergency">0 / 0</span>
+                        <button class="pager__btn" data-act="next" aria-label="다음">›</button>
+                    </div>
+                </section>
+
+                <!-- traffic -->
+                <section class="info-panel" id="panel-traffic" role="tabpanel" hidden>
+                    <div class="info-panel__content">
+                        <table class="table table--tight">
+                            <thead>
+                                <tr>
+                                    <th style="width:96px">발생</th>
+                                    <th>도로</th>
+                                    <th>내용</th>
+                                    <th style="width:80px">유형</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trafficTbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="pager" data-pager="traffic">
+                        <button class="pager__btn" data-act="prev" aria-label="이전">‹</button>
+                        <span class="pager__label" id="pagerLabel-traffic">0 / 0</span>
+                        <button class="pager__btn" data-act="next" aria-label="다음">›</button>
+                    </div>
+                </section>
+
+                <!-- news -->
+                <section class="info-panel" id="panel-news" role="tabpanel" hidden>
+                    <div class="info-panel__content">
+                        <table class="table table--tight">
+                            <thead>
+                                <tr>
+                                    <th style="width:96px">시각</th>
+                                    <th style="width:32%">제목</th>
+                                    <th>내용</th>
+                                </tr>
+                            </thead>
+                            <tbody id="newsTbody"></tbody>
+                        </table>
+                    </div>
+                    <div class="pager" data-pager="news">
+                        <button class="pager__btn" data-act="prev" aria-label="이전">‹</button>
+                        <span class="pager__label" id="pagerLabel-news">0 / 0</span>
+                        <button class="pager__btn" data-act="next" aria-label="다음">›</button>
+                    </div>
+                </section>
             </div>
         </article>
 
-        <!-- 미세먼지 (AirKorea) -->
-        <article class="card col-4">
-            <header class="card__header">
-                <h2 class="card__title">
-                    <span class="card__icon">💨</span>
-                    대기질
-                    <span class="badge">시·도별</span>
-                </h2>
-                <span class="live-pill" id="liveAir"></span>
-            </header>
-            <div class="card__body">
-                <div id="airGrid" class="air-grid">
-                    <div class="empty-state"><div class="empty-state__title">대기질 정보를 불러오는 중입니다</div></div>
-                </div>
-            </div>
-        </article>
-
-        <!-- 긴급재난문자 -->
-        <article class="card col-6">
-            <header class="card__header">
-                <h2 class="card__title"><span class="card__icon">⚠</span>긴급재난문자</h2>
-                <span class="live-pill" id="liveEmergency"></span>
-            </header>
-            <div class="card__body card__body--flush">
-                <div class="table--scroll-y">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th style="width:140px">발송시각</th>
-                                <th style="width:160px">지역</th>
-                                <th>메시지</th>
-                                <th style="width:80px">단계</th>
-                                <th style="width:100px">유형</th>
-                            </tr>
-                        </thead>
-                        <tbody id="emergencyTbody">
-                            <tr><td colspan="5"><div class="empty-state"><div class="empty-state__title">데이터를 불러오는 중입니다</div></div></td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </article>
-
-        <!-- 교통돌발 -->
-        <article class="card col-6">
-            <header class="card__header">
-                <h2 class="card__title"><span class="card__icon">🚧</span>교통돌발상황</h2>
-                <span class="live-pill" id="liveTraffic"></span>
-            </header>
-            <div class="card__body card__body--flush">
-                <div class="table--scroll-y">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th style="width:140px">발생시각</th>
-                                <th>도로명</th>
-                                <th style="width:80px">방향</th>
-                                <th>내용</th>
-                                <th style="width:80px">유형</th>
-                                <th style="width:100px">상세</th>
-                            </tr>
-                        </thead>
-                        <tbody id="trafficTbody">
-                            <tr><td colspan="6"><div class="empty-state"><div class="empty-state__title">데이터를 불러오는 중입니다</div></div></td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </article>
-
-        <!-- 뉴스 -->
-        <article class="card col-8">
-            <header class="card__header">
-                <h2 class="card__title"><span class="card__icon">📰</span>실시간 뉴스</h2>
-                <span class="live-pill" id="liveNews"></span>
-            </header>
-            <div class="card__body card__body--flush">
-                <div class="table--scroll-y">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th style="width:140px">시각</th>
-                                <th style="width:24%">제목</th>
-                                <th>내용</th>
-                            </tr>
-                        </thead>
-                        <tbody id="newsTbody">
-                            <tr><td colspan="3"><div class="empty-state"><div class="empty-state__title">뉴스를 불러오는 중입니다</div></div></td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </article>
-
-        <!-- 서버 정보 -->
-        <article class="card col-4">
+        <!-- (4) 서버 지표 (하단 와이드, 컴팩트) -->
+        <article class="card card--server">
             <header class="card__header">
                 <h2 class="card__title"><span class="card__icon">⚙</span>서버 지표</h2>
             </header>
-            <div class="card__body">
-                <div class="chart-wrap"><canvas id="memoryChart"></canvas></div>
+            <div class="card__body card__body--server">
+                <div class="chart-wrap chart-wrap--mini"><canvas id="memoryChart"></canvas></div>
                 <div class="server-grid">
-                    <div class="server-cell">
-                        <div class="server-cell__label">아키텍처</div>
-                        <div class="server-cell__value" id="systemArchitecture">-</div>
-                    </div>
-                    <div class="server-cell">
-                        <div class="server-cell__label">OS</div>
-                        <div class="server-cell__value" id="systemName">-</div>
-                    </div>
-                    <div class="server-cell">
-                        <div class="server-cell__label">Load Avg</div>
-                        <div class="server-cell__value" id="systemLoad">-</div>
-                    </div>
-                    <div class="server-cell">
-                        <div class="server-cell__label">총 메모리</div>
-                        <div class="server-cell__value" id="totalMemory">-</div>
-                    </div>
-                    <div class="server-cell">
-                        <div class="server-cell__label">사용 중</div>
-                        <div class="server-cell__value" id="usedMemory">-</div>
-                    </div>
-                    <div class="server-cell">
-                        <div class="server-cell__label">여유</div>
-                        <div class="server-cell__value" id="freeMemory">-</div>
-                    </div>
+                    <div class="server-cell"><div class="server-cell__label">아키텍처</div><div class="server-cell__value" id="systemArchitecture">-</div></div>
+                    <div class="server-cell"><div class="server-cell__label">OS</div><div class="server-cell__value" id="systemName">-</div></div>
+                    <div class="server-cell"><div class="server-cell__label">Load Avg</div><div class="server-cell__value" id="systemLoad">-</div></div>
+                    <div class="server-cell"><div class="server-cell__label">총 메모리</div><div class="server-cell__value" id="totalMemory">-</div></div>
+                    <div class="server-cell"><div class="server-cell__label">사용 중</div><div class="server-cell__value" id="usedMemory">-</div></div>
+                    <div class="server-cell"><div class="server-cell__label">여유</div><div class="server-cell__value" id="freeMemory">-</div></div>
                 </div>
             </div>
         </article>
@@ -254,6 +216,7 @@
 
 <!-- core helpers -->
 <script th:src="@{/js/core/helpers.js}"     src="/js/core/helpers.js"></script>
+<script th:src="@{/js/core/pager.js}"       src="/js/core/pager.js"></script>
 <script th:src="@{/js/core/eventSource.js}" src="/js/core/eventSource.js"></script>
 <script th:src="@{/js/core/theme.js}"       src="/js/core/theme.js"></script>
 

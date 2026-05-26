@@ -1,5 +1,8 @@
 /**
- * 메인 대시보드 진입점 — 4개 SSE 구독 + 연결 상태 표시.
+ * 메인 대시보드 진입점.
+ *  - 단일 SSE (/dashboard/main/stream) 다중 event type 디스패치
+ *  - 정보 탭 5종 전환
+ *  - AI 한줄 브리핑 10분 갱신 + 수동 새로고침
  */
 (function () {
     'use strict';
@@ -13,38 +16,45 @@
             el.classList.remove('live-pill--stale');
             switch (state) {
                 case 'open':
-                    el.innerHTML = '<span class="live-pill__dot"></span><span>' + label + ' · 실시간</span>';
-                    return;
+                    el.innerHTML = '<span class="live-pill__dot"></span><span>' + label + '</span>'; return;
                 case 'connecting':
                     el.classList.add('live-pill--stale');
-                    el.innerHTML = '<span class="live-pill__dot"></span><span>' + label + ' · 연결 중</span>';
-                    return;
+                    el.innerHTML = '<span class="live-pill__dot"></span><span>' + label + ' · 연결 중</span>'; return;
                 case 'reconnecting':
                     el.classList.add('live-pill--stale');
-                    el.innerHTML = '<span class="live-pill__dot"></span><span>' + label + ' · 재연결 중</span>';
-                    return;
+                    el.innerHTML = '<span class="live-pill__dot"></span><span>' + label + ' · 재연결 중</span>'; return;
                 case 'closed':
                     el.classList.add('live-pill--stale');
-                    el.innerHTML = '<span class="live-pill__dot"></span><span>' + label + ' · 종료</span>';
-                    return;
+                    el.innerHTML = '<span class="live-pill__dot"></span><span>' + label + ' · 종료</span>'; return;
             }
         };
     }
 
-    /**
-     * 단일 SSE 채널 — 한 connection 안에서 event type 별로 디스패치.
-     *
-     * 이전: 5개 EventSource → 브라우저 HTTP/1.1 origin-per-host(6) 풀을 다 차지
-     *       → 같은 도메인의 myapi/simpleStock/my-computer/aim 호출이 connection 대기.
-     * 현재: 1개 EventSource 만 사용 → 다른 서비스 호출에 영향 없음.
-     */
     function safeCall(fn) {
         return function (data) { try { fn(data); } catch (e) { console.error(e); } };
+    }
+
+    function bindInfoTabs() {
+        const tabs = document.querySelectorAll('.info-tab');
+        const panels = document.querySelectorAll('.info-panel');
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                const name = tab.getAttribute('data-tab');
+                tabs.forEach(function (t) { t.classList.toggle('is-active', t === tab); });
+                panels.forEach(function (p) {
+                    const active = (p.id === 'panel-' + name);
+                    p.hidden = !active;
+                    p.classList.toggle('is-active', active);
+                });
+            });
+        });
     }
 
     function bindSplitBriefing() {
         const ids = ['Weather', 'Air', 'Emergency', 'Traffic', 'News'];
         const keys = ['weather', 'air', 'emergency', 'traffic', 'news'];
+        const updated = document.getElementById('splitUpdated');
+
         function paint(state) {
             ids.forEach(function (id) {
                 const el = document.getElementById('split' + id);
@@ -52,37 +62,33 @@
             });
         }
         function refresh() {
-            paint('생성 중...');
+            if (updated) updated.textContent = '생성 중…';
             fetch(ctx + 'api/gemini/dashboard-split', { headers: { 'Accept': 'application/json' }})
-                .then(function (r) {
-                    if (!r.ok) throw new Error('HTTP ' + r.status);
-                    return r.json();
-                })
+                .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 .then(function (data) {
                     keys.forEach(function (k, i) {
                         const el = document.getElementById('split' + ids[i]);
                         if (el) el.textContent = data[k] || '-';
                     });
+                    if (updated) updated.textContent = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
                 })
                 .catch(function (e) {
                     console.error('split summary', e);
                     paint('요약 실패');
+                    if (updated) updated.textContent = '실패';
                 });
         }
         const btn = document.getElementById('splitRefreshBtn');
         if (btn) btn.addEventListener('click', refresh);
 
-        // 초기 1회 + 10분 주기
         refresh();
         setInterval(refresh, 10 * 60 * 1000);
     }
 
     function start() {
-        const mainStatus      = statusBinder('liveMain',      '메인');
-        const emergencyStatus = statusBinder('liveEmergency', '재난문자');
-        const trafficStatus   = statusBinder('liveTraffic',   '교통');
-        const newsStatus      = statusBinder('liveNews',      '뉴스');
-        const airStatus       = statusBinder('liveAir',       '대기질');
+        bindInfoTabs();
+
+        const allStatus = statusBinder('liveAll', '실시간');
 
         SSE.subscribeMulti(ctx + 'dashboard/main/stream', {
             handlers: {
@@ -109,10 +115,7 @@
                     }
                 })
             },
-            // 단일 연결의 상태를 5개 라이브 인디케이터에 동시 반영
-            onStatus: function (state) {
-                mainStatus(state); emergencyStatus(state); trafficStatus(state); newsStatus(state); airStatus(state);
-            }
+            onStatus: allStatus
         });
 
         bindSplitBriefing();
