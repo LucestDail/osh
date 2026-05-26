@@ -25,6 +25,7 @@
     let weatherLayer = null;
     let emergencyLayer = null;
     let trafficLayer = null;
+    let newsLayer = null;
     let regionMap = null; // { sido: {...}, sigungu: {...} }
     let regionMapPromise = null;
 
@@ -35,10 +36,10 @@
         return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
 
-    // 19도시가 분포한 남한 본토 bbox (제주는 살짝 잘리지만 마커가 보이도록 약간만 포함)
-    //   SW=[34.0, 126.4], NE=[38.5, 129.9]
-    const KR_BOUNDS = [[34.0, 126.4], [38.5, 129.9]];
-    const MAX_FIT_ZOOM = 8.5;
+    // 19도시가 가장 잘 보이는 본토 중심 bbox (제주는 별도 마커가 잘리지 않을 만큼만 살짝 포함)
+    //   SW=[34.6, 126.4], NE=[38.4, 129.6] → 서울~부산 본토 + 강원동해안
+    const KR_BOUNDS = [[34.6, 126.4], [38.4, 129.6]];
+    const MAX_FIT_ZOOM = 10;
 
     function fitToKorea() {
         if (!map) return;
@@ -77,6 +78,7 @@
         weatherLayer   = L.layerGroup().addTo(map);
         emergencyLayer = L.layerGroup().addTo(map);
         trafficLayer   = L.layerGroup().addTo(map);
+        newsLayer      = L.layerGroup().addTo(map);
         return map;
     }
 
@@ -127,11 +129,15 @@
         const fill = tempColor(tempC);
         const ring = airBorderColor(airGrade);
         const t = (tempC == null || isNaN(tempC)) ? '?' : tempC.toFixed(0) + '°';
-        const ringStyle = ring === 'transparent' ? '' : '; box-shadow:0 0 0 3px ' + ring;
+        const ringStyle = ring === 'transparent' ? '' : '; box-shadow:0 0 0 2px ' + ring;
+        const dot = (ring === 'transparent')
+            ? ''
+            : '<span class="osh-mk__dot" style="background:' + ring + '"></span>';
         const html =
             '<div class="osh-mk osh-mk--weather" style="background:' + fill + ringStyle + '">' +
                 '<span class="osh-mk__t">' + t + '</span>' +
                 '<span class="osh-mk__n">' + H.esc(cityName) + '</span>' +
+                dot +
             '</div>';
         return L.divIcon({
             className: '',
@@ -160,11 +166,34 @@
         });
     }
 
+    function newsDivIcon(count) {
+        const label = (count && count > 1) ? String(count) : '';
+        return L.divIcon({
+            className: '',
+            html: '<div class="osh-mk osh-mk--news">' + (label ? '<span class="osh-mk__n">' + label + '</span>' : '📰') + '</div>',
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+        });
+    }
+
     /* ---------- weather ---------- */
 
-    // air grade 별도 sink 에서 latest 값 보관 (renderWeather 가 그릴 때 적용)
-    let airGradeByCity = {}; // { 서울: '2', 부산: '3', ... }
+    // air 정보 별도 보관 (renderWeather 가 그릴 때 적용)
+    let airGradeByCity = {}; // { 서울: '2', 부산: '3', ... }   ← 마커 dot/외곽선 색
+    let airInfoByCity  = {}; // { 서울: { grade, pm10, pm25, label } } ← popup 상세
     function setAirGrades(g) { airGradeByCity = g || {}; }
+    function setAirInfo(info) { airInfoByCity = info || {}; }
+
+    function airText(name) {
+        const i = airInfoByCity[name];
+        if (!i) return '';
+        const parts = [];
+        if (i.label) parts.push(i.label);
+        if (i.pm10 != null && i.pm10 >= 0) parts.push('PM10 ' + i.pm10 + 'µg');
+        if (i.pm25 != null && i.pm25 >= 0) parts.push('PM2.5 ' + i.pm25 + 'µg');
+        if (!parts.length) return '';
+        return '<div>대기 ' + H.esc(parts.join(' · ')) + '</div>';
+    }
 
     function renderWeather(strJson) {
         if (!ensureMap()) return;
@@ -186,7 +215,7 @@
                 '<div>기온 ' + (tempC == null ? '-' : tempC.toFixed(1)) + '°C</div>' +
                 '<div>습도 ' + (payload.main.humidity || '-') + '%</div>' +
                 '<div>바람 ' + (payload.wind && payload.wind.speed != null ? payload.wind.speed + ' m/s' : '-') + '</div>' +
-                (air ? '<div>대기 등급 ' + H.esc(air) + '</div>' : '') +
+                airText(name) +
                 '</div>';
             m.bindPopup(popupHtml);
             m.addTo(weatherLayer);
@@ -272,6 +301,92 @@
         }
     }
 
+    /* ---------- news ---------- */
+
+    // sido 단축형은 false positive 가 많아 단어 경계 매칭. sigungu/full-name 은 contains.
+    // 키 길이 우선순위: 긴 키 먼저 매칭 → 같은 뉴스에서 더 구체적인 지역만 잡힘
+    const SIDO_SHORT_TOKENS = ['서울','부산','대구','인천','광주','대전','울산','세종','경기','강원','충북','충남','전북','전남','경북','경남','제주'];
+
+    function buildRegionIndex() {
+        const long = []; // {key, coord, kind:'sido'|'sigungu'}
+        const shortSido = []; // {key, coord}
+        if (!regionMap) return { long: long, shortSido: shortSido };
+        Object.keys(regionMap.sido || {}).forEach(function (k) {
+            if (SIDO_SHORT_TOKENS.indexOf(k) >= 0) {
+                shortSido.push({ key: k, coord: regionMap.sido[k] });
+            } else {
+                long.push({ key: k, coord: regionMap.sido[k], kind: 'sido' });
+            }
+        });
+        Object.keys(regionMap.sigungu || {}).forEach(function (k) {
+            long.push({ key: k, coord: regionMap.sigungu[k], kind: 'sigungu' });
+        });
+        long.sort(function (a, b) { return b.key.length - a.key.length; });
+        return { long: long, shortSido: shortSido };
+    }
+
+    // 단축 시도명은 앞뒤가 한글 글자가 아닌 경우(공백/구두점/문장끝 등)에만 매칭 → "서울"은 매칭, "서울대공원"은 매칭 안됨
+    function shortSidoMatches(text, key) {
+        if (!text) return false;
+        // (?:^|[^가-힣]) key (?:[^가-힣]|$)
+        const re = new RegExp('(?:^|[^가-힣])' + key + '(?:[^가-힣]|$)');
+        return re.test(text);
+    }
+
+    // 뉴스 1건에서 가장 먼저 매칭되는 지역 한 곳만 채택 (longest-first)
+    function findRegionForNews(title, idx) {
+        if (!title) return null;
+        for (let i = 0; i < idx.long.length; i++) {
+            if (title.indexOf(idx.long[i].key) >= 0) return idx.long[i];
+        }
+        for (let j = 0; j < idx.shortSido.length; j++) {
+            if (shortSidoMatches(title, idx.shortSido[j].key)) return idx.shortSido[j];
+        }
+        return null;
+    }
+
+    function renderNews(strJson) {
+        if (!ensureMap()) return;
+        loadRegions().then(function () {
+            newsLayer.clearLayers();
+            const root = H.unwrap(strJson, 'yeonhapJson');
+            const list = (root && Array.isArray(root.list)) ? root.list : [];
+            if (!list.length) return;
+
+            const idx = buildRegionIndex();
+            const grouped = {}; // key(region) → { coord, items:[news...] }
+            const MAX_SCAN = 50;
+            const limit = Math.min(list.length, MAX_SCAN);
+            for (let i = 0; i < limit; i++) {
+                const n = list[i] || {};
+                const title = (n.title || '') + ' ' + (n.summary || '');
+                const hit = findRegionForNews(title, idx);
+                if (!hit) continue;
+                if (!grouped[hit.key]) grouped[hit.key] = { coord: hit.coord, items: [] };
+                if (grouped[hit.key].items.length < 5) grouped[hit.key].items.push(n);
+            }
+
+            const keys = Object.keys(grouped).slice(0, 12);
+            keys.forEach(function (k) {
+                const g = grouped[k];
+                const m = L.marker(g.coord, { icon: newsDivIcon(g.items.length) });
+                const top = g.items.slice(0, 3).map(function (it) {
+                    const time = it.pubDate ? H.formatDateTime(it.pubDate) : '';
+                    const link = it.link
+                        ? '<a href="' + H.esc(it.link) + '" target="_blank" rel="noopener">' + H.esc(it.title || '-') + '</a>'
+                        : H.esc(it.title || '-');
+                    return '<li>' + link + (time ? ' <span class="osh-popup__time">' + time + '</span>' : '') + '</li>';
+                }).join('');
+                const popupHtml =
+                    '<div class="osh-popup"><b>' + H.esc(k) + ' 관련 뉴스</b>' +
+                    '<ul class="osh-popup__list">' + top + '</ul>' +
+                    '</div>';
+                m.bindPopup(popupHtml, { maxWidth: 320 });
+                m.addTo(newsLayer);
+            });
+        });
+    }
+
     /* ---------- theme change observer ---------- */
 
     function watchTheme() {
@@ -291,6 +406,8 @@
         renderWeather: renderWeather,
         renderEmergency: renderEmergency,
         renderTraffic: renderTraffic,
-        setAirGrades: setAirGrades
+        renderNews: renderNews,
+        setAirGrades: setAirGrades,
+        setAirInfo: setAirInfo
     };
 })();

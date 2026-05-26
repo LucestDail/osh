@@ -25,13 +25,28 @@
         '춘천': '강원', '원주': '강원', '강릉': '강원', '속초': '강원'
     };
 
-    let latestGradesBySido = {};
+    // 시도별 최신 측정값 { 강원: {grade,pm10,pm25}, ... }
+    let latestBySido = {};
+
     function gradesByCity() {
         const out = {};
         Object.keys(CITY_TO_SIDO).forEach(function (city) {
             const sido = CITY_TO_SIDO[city];
-            const g = latestGradesBySido[sido];
-            if (g) out[city] = String(g);
+            const v = latestBySido[sido];
+            if (v && v.grade) out[city] = String(v.grade);
+        });
+        return out;
+    }
+
+    // map.js 가 popup 채우는 용도. {서울: {grade,pm10,pm25,label}, ...}
+    function infoByCity() {
+        const out = {};
+        Object.keys(CITY_TO_SIDO).forEach(function (city) {
+            const sido = CITY_TO_SIDO[city];
+            const v = latestBySido[sido];
+            if (!v) return;
+            const m = gradeMeta(v.grade);
+            out[city] = { grade: v.grade, pm10: v.pm10, pm25: v.pm25, label: m.label };
         });
         return out;
     }
@@ -68,8 +83,11 @@
         const root = H.unwrap(strJson, 'airJson');
         const items = (root && Array.isArray(root.sido)) ? root.sido.slice() : [];
 
-        latestGradesBySido = {};
-        items.forEach(function (it) { if (it && it.name) latestGradesBySido[it.name] = it.khaiGrade; });
+        latestBySido = {};
+        items.forEach(function (it) {
+            if (!it || !it.name) return;
+            latestBySido[it.name] = { grade: it.khaiGrade, pm10: it.pm10, pm25: it.pm25 };
+        });
 
         // 나쁜 등급 우선
         items.sort(function (a, b) { return (Number(b.khaiGrade) || 0) - (Number(a.khaiGrade) || 0); });
@@ -78,6 +96,7 @@
 
     (window.OSH = window.OSH || {}).air = {
         render: render,
-        gradesByCity: gradesByCity
+        gradesByCity: gradesByCity,
+        infoByCity: infoByCity
     };
 })();

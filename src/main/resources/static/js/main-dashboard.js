@@ -105,12 +105,19 @@
                     window.OSH.traffic && window.OSH.traffic.render(data);
                     window.OSH.map     && window.OSH.map.renderTraffic(data);
                 }),
-                yeonhap: safeCall(function (data) { window.OSH.news && window.OSH.news.render(data); }),
+                yeonhap: safeCall(function (data) {
+                    window.OSH.news && window.OSH.news.render(data);
+                    window.OSH.map  && window.OSH.map.renderNews(data);
+                }),
                 air: safeCall(function (data) {
-                    if (window.OSH.air) {
-                        window.OSH.air.render(data);
-                        if (window.OSH.map && window.OSH.air.gradesByCity) {
+                    if (!window.OSH.air) return;
+                    window.OSH.air.render(data);
+                    if (window.OSH.map) {
+                        if (window.OSH.air.gradesByCity) {
                             window.OSH.map.setAirGrades(window.OSH.air.gradesByCity());
+                        }
+                        if (window.OSH.air.infoByCity && window.OSH.map.setAirInfo) {
+                            window.OSH.map.setAirInfo(window.OSH.air.infoByCity());
                         }
                     }
                 })
