@@ -31,44 +31,41 @@
         };
     }
 
+    /**
+     * 단일 SSE 채널 — 한 connection 안에서 event type 별로 디스패치.
+     *
+     * 이전: 5개 EventSource → 브라우저 HTTP/1.1 origin-per-host(6) 풀을 다 차지
+     *       → 같은 도메인의 myapi/simpleStock/my-computer/aim 호출이 connection 대기.
+     * 현재: 1개 EventSource 만 사용 → 다른 서비스 호출에 영향 없음.
+     */
     function start() {
-        // /main/info : application 전용 (시계 / 메모리 / 로드) — 1초 tick, 페이로드 ~300B
-        SSE.subscribe(ctx + 'dashboard/main/info', {
-            onMessage: function (data) {
-                try { window.OSH.application.render(data); } catch (e) { console.error('application render', e); }
-            },
-            onStatus: statusBinder('liveMain', '메인')
-        });
+        const mainStatus      = statusBinder('liveMain',      '메인');
+        const emergencyStatus = statusBinder('liveEmergency', '재난문자');
+        const trafficStatus   = statusBinder('liveTraffic',   '교통');
+        const newsStatus      = statusBinder('liveNews',      '뉴스');
 
-        // /main/weather : 19도시 날씨 — 변경 시점에만 (1시간 주기)
-        SSE.subscribe(ctx + 'dashboard/main/weather', {
-            onMessage: function (data) {
-                try { window.OSH.weather.render(data); } catch (e) { console.error('weather render', e); }
+        SSE.subscribeMulti(ctx + 'dashboard/main/stream', {
+            handlers: {
+                dashboard: function (data) {
+                    try { window.OSH.application.render(data); } catch (e) { console.error('application render', e); }
+                },
+                weather: function (data) {
+                    try { window.OSH.weather.render(data); } catch (e) { console.error('weather render', e); }
+                },
+                emergency: function (data) {
+                    try { window.OSH.emergency.render(data); } catch (e) { console.error('emergency render', e); }
+                },
+                traffic: function (data) {
+                    try { window.OSH.traffic.render(data); } catch (e) { console.error('traffic render', e); }
+                },
+                yeonhap: function (data) {
+                    try { window.OSH.news.render(data); } catch (e) { console.error('news render', e); }
+                }
+            },
+            // 단일 연결의 상태를 4개 라이브 인디케이터에 동시에 반영
+            onStatus: function (state) {
+                mainStatus(state); emergencyStatus(state); trafficStatus(state); newsStatus(state);
             }
-        });
-
-        // /main/emergency : 60s
-        SSE.subscribe(ctx + 'dashboard/main/emergency', {
-            onMessage: function (data) {
-                try { window.OSH.emergency.render(data); } catch (e) { console.error('emergency render', e); }
-            },
-            onStatus: statusBinder('liveEmergency', '재난문자')
-        });
-
-        // /main/traffic : 60s
-        SSE.subscribe(ctx + 'dashboard/main/traffic', {
-            onMessage: function (data) {
-                try { window.OSH.traffic.render(data); } catch (e) { console.error('traffic render', e); }
-            },
-            onStatus: statusBinder('liveTraffic', '교통')
-        });
-
-        // /main/yeonhap : 60s
-        SSE.subscribe(ctx + 'dashboard/main/yeonhap', {
-            onMessage: function (data) {
-                try { window.OSH.news.render(data); } catch (e) { console.error('news render', e); }
-            },
-            onStatus: statusBinder('liveNews', '뉴스')
         });
     }
 
