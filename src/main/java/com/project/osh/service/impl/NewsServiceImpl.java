@@ -16,10 +16,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Slf4j
 @Service
 public class NewsServiceImpl implements NewsService {
+
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+    private static final DateTimeFormatter NEWS_DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Autowired
     private NewsRepository newsRepository;
@@ -123,7 +129,14 @@ public class NewsServiceImpl implements NewsService {
             if (cachedNews != null && !cachedNews.isEmpty()) {
                 for (News news : cachedNews) {
                     JsonObject newsObject = new JsonObject();
-                    newsObject.addProperty("createDT", news.getNewsCreateDT().toString());
+                    if (news.getNewsCreateDT() != null) {
+                        ZonedDateTime zdt = news.getNewsCreateDT().atZone(SEOUL);
+                        newsObject.addProperty("createDT", zdt.format(NEWS_DT_FMT));
+                        newsObject.addProperty("createDTMs", zdt.toInstant().toEpochMilli());
+                    } else {
+                        newsObject.addProperty("createDT", "");
+                        newsObject.addProperty("createDTMs", 0);
+                    }
                     newsObject.addProperty("company", news.getNewsCompany());
                     newsObject.addProperty("title", news.getNewsTitle());
                     newsObject.addProperty("content", news.getNewsContents());

@@ -316,8 +316,11 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
     text-decoration: none;
     cursor: pointer;
 }
-.osh-loc-btn.is-loading { animation: oshLocSpin 0.8s linear infinite; }
-@keyframes oshLocSpin {
+.osh-loc-btn__icon { display: inline-block; line-height: 1; }
+.osh-loc-btn.is-loading .osh-loc-btn__icon { animation: oshIconSpin 0.8s linear infinite; }
+.btn__icon { display: inline-block; line-height: 1; }
+.btn__icon.is-spinning { animation: oshIconSpin 0.8s linear infinite; }
+@keyframes oshIconSpin {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
 }

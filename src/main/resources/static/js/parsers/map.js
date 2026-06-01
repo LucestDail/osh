@@ -538,7 +538,7 @@
         _userMarker.bindPopup(buildUserPopupHtml(lat, lon, sourceLabel), { maxWidth: 240 });
         _userMarker.addTo(map);
         _userMarker.openPopup();
-        if (_locBtn) { _locBtn.innerHTML = '📍'; _locBtn.classList.remove('is-loading'); }
+        if (_locBtn) { _locBtn.innerHTML = '<span class="osh-loc-btn__icon">📍</span>'; _locBtn.classList.remove('is-loading'); }
     }
 
     function tryIpGeolocation(onSuccess, onFail) {
@@ -557,7 +557,7 @@
 
     function tryLocate(manual) {
         if (!map) return;
-        if (_locBtn) { _locBtn.innerHTML = '⟳'; _locBtn.classList.add('is-loading'); }
+        if (_locBtn) { _locBtn.innerHTML = '<span class="osh-loc-btn__icon">⟳</span>'; _locBtn.classList.add('is-loading'); }
 
         // 1) GPS: HTTPS or localhost 에서만 작동
         if (window.isSecureContext && navigator.geolocation) {
@@ -570,7 +570,7 @@
                     tryIpGeolocation(
                         function (lat, lon, src) { placeUserMarker(lat, lon, src); },
                         function () {
-                            if (_locBtn) { _locBtn.innerHTML = '📍'; _locBtn.classList.remove('is-loading'); }
+                            if (_locBtn) { _locBtn.innerHTML = '<span class="osh-loc-btn__icon">📍</span>'; _locBtn.classList.remove('is-loading'); }
                         }
                     );
                 },
@@ -581,7 +581,7 @@
             tryIpGeolocation(
                 function (lat, lon, src) { placeUserMarker(lat, lon, src); },
                 function () {
-                    if (_locBtn) { _locBtn.innerHTML = '📍'; _locBtn.classList.remove('is-loading'); }
+                    if (_locBtn) { _locBtn.innerHTML = '<span class="osh-loc-btn__icon">📍</span>'; _locBtn.classList.remove('is-loading'); }
                 }
             );
         }
@@ -593,7 +593,7 @@
         ctrl.onAdd = function () {
             const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control osh-loc-ctrl');
             const btn = L.DomUtil.create('a', 'osh-loc-btn', container);
-            btn.innerHTML = '📍';
+            btn.innerHTML = '<span class="osh-loc-btn__icon">📍</span>';
             btn.title = '현재 위치 찾기';
             btn.href = '#';
             _locBtn = btn;
@@ -676,17 +676,21 @@
 
     /* ========== 날짜 문자열 → ms 변환 ========== */
     function parseDateMs(str) {
+        if (str == null || str === '') return 0;
+        if (typeof str === 'number') return str;
+        var d = H.parseToDate ? H.parseToDate(str) : null;
+        if (d) return d.getTime();
         try {
-            var s = String(str || '');
-            if (/^\d{14}$/.test(s)) {
-                var iso = s.slice(0,4)+'-'+s.slice(4,6)+'-'+s.slice(6,8)
-                        + 'T'+s.slice(8,10)+':'+s.slice(10,12)+':'+s.slice(12,14);
-                var d = new Date(iso);
-                return isNaN(d.getTime()) ? 0 : d.getTime();
-            }
-            var d2 = new Date(s.replace(/\//g, '-').replace(' ', 'T'));
-            return isNaN(d2.getTime()) ? 0 : d2.getTime();
+            var s = String(str).replace(/\//g, '-').replace(' ', 'T');
+            var d2 = H.parseToDate ? H.parseToDate(s) : new Date(s);
+            return d2 && !isNaN(d2.getTime()) ? d2.getTime() : 0;
         } catch (e) { return 0; }
+    }
+
+    function newsItemDateMs(n) {
+        if (!n) return 0;
+        if (n.createDTMs != null && !isNaN(Number(n.createDTMs))) return Number(n.createDTMs);
+        return parseDateMs(n.createDT || n.pubDate);
     }
 
     /* ========== 신규 마커 팝업 큐 (10초씩, 재난만 지도 이동) ========== */
@@ -878,7 +882,7 @@
         loadRegions().then(function () {
             newsLayer.clearLayers();
             const root = H.unwrap(strJson, 'yeonhapJson');
-            const list = (root && Array.isArray(root.list)) ? root.list : [];
+            const list = (root && root.data && Array.isArray(root.data.items)) ? root.data.items : [];
             if (!list.length) return;
 
             const idx = buildRegionIndex();
@@ -887,7 +891,7 @@
             const limit = Math.min(list.length, MAX_SCAN);
             for (let i = 0; i < limit; i++) {
                 const n = list[i] || {};
-                const text = (n.title || '') + ' ' + (n.summary || '');
+                const text = (n.title || '') + ' ' + (n.content || n.summary || '');
                 const hit = findRegionForNews(text, idx);
                 if (!hit) continue;
                 if (!grouped[hit.key]) grouped[hit.key] = { coord: hit.coord, items: [] };
@@ -898,7 +902,7 @@
             Object.keys(grouped).slice(0, 12).forEach(function (k) {
                 const g = grouped[k];
                 const isNew = _newsReady
-                    && parseDateMs(g.items[0] && g.items[0].pubDate) > _lastNewsRenderAt;
+                    && newsItemDateMs(g.items[0]) > _lastNewsRenderAt;
                 const m = L.marker(g.coord, { icon: newsDivIcon(g.items.length, isNew) });
                 const tipTitle = g.items[0] ? H.truncate(g.items[0].title || k, 40) : k;
                 const tipHtml =
@@ -906,7 +910,7 @@
                     '<div class="osh-tip-sub">' + H.esc(tipTitle) + '</div>';
                 m.bindTooltip(tipHtml, { className: 'osh-map-tip', sticky: false, offset: [10, 0] });
                 const rows = g.items.slice(0, 3).map(function (it) {
-                    const time = it.pubDate ? H.formatDateTime(it.pubDate) : '';
+                    const time = it.createDT ? H.formatDateTime(it.createDT) : (it.pubDate ? H.formatDateTime(it.pubDate) : '');
                     const link = it.link
                         ? '<a href="' + H.esc(it.link) + '" target="_blank" rel="noopener">' + H.esc(it.title || '-') + '</a>'
                         : H.esc(it.title || '-');

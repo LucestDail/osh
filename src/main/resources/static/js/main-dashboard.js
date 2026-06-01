@@ -68,6 +68,8 @@
             });
         }
         function refresh() {
+            const icon = document.getElementById('splitRefreshIcon');
+            if (icon) icon.classList.add('is-spinning');
             if (updated) updated.textContent = '생성 중…';
             fetch(ctx + 'api/gemini/dashboard-split', { headers: { 'Accept': 'application/json' }})
                 .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
@@ -76,12 +78,15 @@
                         const el = document.getElementById('split' + ids[i]);
                         if (el) el.textContent = data[k] || '-';
                     });
-                    if (updated) updated.textContent = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                    if (updated) updated.textContent = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' });
                 })
                 .catch(function (e) {
                     console.error('split summary', e);
                     paint('요약 실패');
                     if (updated) updated.textContent = '실패';
+                })
+                .finally(function () {
+                    if (icon) icon.classList.remove('is-spinning');
                 });
         }
         const btn = document.getElementById('splitRefreshBtn');

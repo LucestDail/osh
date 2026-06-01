@@ -24,17 +24,17 @@
         return safeParse(root[key]);
     }
 
-    /** YYYYMMDDHHmmss 14자리 또는 ISO 문자열 모두 ko-KR 로컬로 */
-    function formatDateTime(value) {
-        if (!value) return '-';
+    /**
+     * 서버·DB에서 오는 시각 문자열 → Date (KST 기준).
+     * 타임존 없는 "2026-06-01T13:42:00" 은 UTC로 해석되면 +9h 밀림 → +09:00 고정.
+     */
+    function parseToDate(value) {
+        if (value == null || value === '') return null;
         try {
-            let d;
-            const s = String(value);
-            if (typeof value === 'number') {
-                d = new Date(value);
-            } else if (/^\d{14}$/.test(s)) {
-                // YYYYMMDDHHmmss
-                d = new Date(
+            const s = String(value).trim();
+            if (typeof value === 'number') return new Date(value);
+            if (/^\d{14}$/.test(s)) {
+                return new Date(
                     Number(s.substring(0, 4)),
                     Number(s.substring(4, 6)) - 1,
                     Number(s.substring(6, 8)),
@@ -42,15 +42,25 @@
                     Number(s.substring(10, 12)),
                     Number(s.substring(12, 14))
                 );
-            } else {
-                d = new Date(s);
             }
-            if (isNaN(d.getTime())) return s;
-            return d.toLocaleString('ko-KR', {
-                year: 'numeric', month: '2-digit', day: '2-digit',
-                hour: '2-digit', minute: '2-digit'
-            });
-        } catch (e) { return String(value); }
+            if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(s) && !/[Zz]|[+-]\d{2}:?\d{2}$/.test(s)) {
+                return new Date(s.replace(' ', 'T') + '+09:00');
+            }
+            const d = new Date(s);
+            return isNaN(d.getTime()) ? null : d;
+        } catch (e) { return null; }
+    }
+
+    /** YYYYMMDDHHmmss 14자리 또는 ISO 문자열 모두 ko-KR 로컬로 */
+    function formatDateTime(value) {
+        if (!value) return '-';
+        const d = parseToDate(value);
+        if (!d) return String(value);
+        return d.toLocaleString('ko-KR', {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit',
+            timeZone: 'Asia/Seoul'
+        });
     }
 
     /** Unix epoch (sec) → HH:mm */
@@ -97,5 +107,5 @@
         return s.length > max ? s.substring(0, max) + '…' : s;
     }
 
-    OSH.helpers = { safeParse, unwrap, formatDateTime, formatHm, kToC, esc, emptyRowHtml, truncate };
+    OSH.helpers = { safeParse, unwrap, parseToDate, formatDateTime, formatHm, kToC, esc, emptyRowHtml, truncate };
 })();
