@@ -261,8 +261,8 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     /**
-     * 19\ub3c4\uc2dc \ub0a0\uc528 \ubcd1\ub82c \uc870\ud68c \u2192 weatherJsonObject \uad50\uccb4.
-     * WebClient \uae30\ubc18 \ub3d9\uc2dc\u00b719 \ud638\ucd9c. \uc774\uc804: \uc21c\ucc28 \ub3d9\uae30 19\ud68c (\ucd5c\uc545 19\ubd84) \u2192 \ud604\uc7ac \uc57d 8\u20139\ucd08 \uc774\ub0b4.
+     * 도시별 날씨 병렬 조회 → weatherJsonObject 교체.
+     * WebClient 동시 호출 수는 cities.properties 목록 크기에 맞춤.
      */
     private void updateWeatherData() {
         JsonObject next = new JsonObject();
@@ -277,7 +277,7 @@ public class DashboardServiceImpl implements DashboardService {
                                 .zipWith(fetchKmaSafe(c))
                                 .map(t -> Tuples.of(idx, c.getName(), t.getT1(), t.getT2()))
                                 .onErrorReturn(Tuples.of(idx, c.getName(), "", "{}"));
-                    }, /* maxConcurrency */ 19)
+                    }, /* maxConcurrency */ Math.max(19, properties.getCities().size()))
                     .toStream()
                     .forEach(t -> {
                         long idx = t.getT1();

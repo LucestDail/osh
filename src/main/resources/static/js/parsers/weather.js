@@ -1,5 +1,5 @@
 /**
- * 날씨 파서 — 19도시 weather grid 렌더링.
+ * 날씨 파서 — 도시별 weather grid 렌더링.
  * 입력: SSE wrapper { weatherJson: "{ weatherJson1: '{...}', ...}" }
  * 페이저: 6도시/페이지 (3행 x 2열)
  */

@@ -26,7 +26,7 @@
     let map = null;
     let tileLayer = null;
     let choroplethLayer = null;   // 기온 코로플레스 (GeoJSON)
-    let cityLayer = null;         // 19도시 원 + 이름 마커
+    let cityLayer = null;         // 도시 날씨 아이콘 마커
     let emergencyLayer = null;
     let trafficLayer = null;
     let newsLayer = null;
@@ -43,7 +43,7 @@
     let _airInfoByCity = {};    // cityName → { grade, pm10, pm25, label }
     let _newsByCity = {};       // cityName → [news items] (도시 마커 팝업에 통합)
 
-    /** regions.json 키 → 19도시명 */
+    /** regions.json 키 → 도시명(cities.properties) */
     const REGION_KEY_TO_CITY = {
         '서울': '서울', '서울특별시': '서울',
         '부산': '부산', '부산광역시': '부산',
@@ -52,22 +52,33 @@
         '광주': '광주', '광주광역시': '광주',
         '대전': '대전', '대전광역시': '대전',
         '울산': '울산', '울산광역시': '울산',
-        '세종': '대전', '세종특별자치시': '대전',
+        '세종': '세종', '세종특별자치시': '세종',
         '수원': '수원', '수원시': '수원',
         '고양': '고양', '고양시': '고양',
         '용인': '용인', '용인시': '용인',
+        '성남': '성남', '성남시': '성남',
+        '안산': '안산', '안산시': '안산',
+        '남양주': '남양주', '남양주시': '남양주',
         '포항': '포항', '포항시': '포항',
         '김천': '김천', '김천시': '김천',
+        '구미': '구미', '구미시': '구미',
+        '안동': '안동', '안동시': '안동',
         '창원': '창원', '창원시': '창원',
         '김해': '김해', '김해시': '김해',
         '춘천': '춘천', '춘천시': '춘천',
         '원주': '원주', '원주시': '원주',
         '강릉': '강릉', '강릉시': '강릉',
         '속초': '속초', '속초시': '속초',
+        '청주': '청주', '청주시': '청주',
+        '천안': '천안', '천안시': '천안',
+        '전주': '전주', '전주시': '전주',
+        '군산': '군산', '군산시': '군산',
+        '여수': '여수', '여수시': '여수',
+        '목포': '목포', '목포시': '목포',
         '제주': '제주', '제주특별자치도': '제주', '제주도': '제주'
     };
 
-    // 시도 → 대표 도시 매핑 (여러 도시는 온도 평균, 툴팁은 첫번째 도시)
+    // 시도 → 대표 도시 매핑 (여러 도시는 온도 평균)
     const PROVINCE_CITIES = {
         '서울특별시':      ['서울'],
         '부산광역시':      ['부산'],
@@ -76,14 +87,14 @@
         '광주광역시':      ['광주'],
         '대전광역시':      ['대전'],
         '울산광역시':      ['울산'],
-        '세종특별자치시':  ['대전'],
-        '경기도':         ['수원', '고양', '용인'],
+        '세종특별자치시':  ['세종'],
+        '경기도':         ['수원', '고양', '용인', '성남', '안산', '남양주'],
         '강원도':         ['춘천', '원주', '강릉', '속초'],
-        '충청북도':       ['대전'],
-        '충청남도':       ['대전'],
-        '전라북도':       ['광주'],
-        '전라남도':       ['광주'],
-        '경상북도':       ['포항', '김천'],
+        '충청북도':       ['청주'],
+        '충청남도':       ['천안', '대전', '세종'],
+        '전라북도':       ['전주', '군산'],
+        '전라남도':       ['광주', '여수', '목포'],
+        '경상북도':       ['포항', '구미', '안동', '김천'],
         '경상남도':       ['창원', '김해'],
         '제주특별자치도': ['제주']
     };
@@ -427,17 +438,61 @@
         return '<div class="osh-popup__section"><b>관련 뉴스</b><ul class="osh-popup__list">' + rows + '</ul></div>';
     }
 
+    function kmaSkyLabel(sky, pty) {
+        const p = Number(pty);
+        if (p === 1) return '비';
+        if (p === 2) return '비/눈';
+        if (p === 3) return '눈';
+        if (p === 4) return '소나기';
+        switch (Number(sky)) {
+            case 1: return '맑음';
+            case 3: return '구름많음';
+            case 4: return '흐림';
+            default: return '-';
+        }
+    }
+
+    function buildFcstHtml(fcstStr) {
+        const f = H.safeParse(fcstStr);
+        if (!f) return '';
+        const seg = function (label, b) {
+            if (!b) return '';
+            const range = (b.tmn != null ? b.tmn : '-') + '° / ' + (b.tmx != null ? b.tmx : '-') + '°';
+            const pop = b.pop != null ? ' · 강수 ' + b.pop + '%' : '';
+            return '<div>' + label + ' ' + range + ' · ' + kmaSkyLabel(b.sky, b.pty) + pop + '</div>';
+        };
+        return '<div class="osh-popup__section"><b>단기예보</b>' +
+            seg('오늘', f.today) + seg('내일', f.tomorrow) + '</div>';
+    }
+
+    function windDirLabel(deg) {
+        if (deg == null || isNaN(deg)) return '';
+        const dirs = ['북', '북동', '동', '남동', '남', '남서', '서', '북서'];
+        return dirs[Math.round(Number(deg) / 45) % 8];
+    }
+
     function buildCityPopupHtml(cityName) {
         const wd = _weatherByCity[cityName];
         const ai = _airInfoByCity[cityName];
         const wxIcon = weatherIconChar(wd && wd.weatherMain);
         let html = '<div class="osh-popup"><b>' + wxIcon + ' ' + H.esc(cityName) + '</b>';
         if (wd) {
-            html += '<div>기온 ' + (wd.tempC != null ? wd.tempC.toFixed(1) : '-') + '°C</div>';
+            html += '<div>기온 ' + (wd.tempC != null ? wd.tempC.toFixed(1) : '-') + '°C' +
+                (wd.feelsC != null ? ' (체감 ' + wd.feelsC.toFixed(1) + '°C)' : '') + '</div>';
             if (wd.rainMm > 0) html += '<div>강수량 🌧 ' + wd.rainMm.toFixed(1) + ' mm/h</div>';
             if (wd.humidity != null) html += '<div>습도 ' + wd.humidity + '%</div>';
-            if (wd.windSpeed != null) html += '<div>바람 ' + wd.windSpeed.toFixed(1) + ' m/s</div>';
+            if (wd.clouds != null) html += '<div>구름량 ' + wd.clouds + '%</div>';
+            if (wd.windSpeed != null) {
+                html += '<div>바람 ' + wd.windSpeed.toFixed(1) + ' m/s' +
+                    (wd.windDeg != null ? ' (' + windDirLabel(wd.windDeg) + ')' : '') + '</div>';
+            }
+            if (wd.visibility != null) html += '<div>가시거리 ' + (wd.visibility / 1000).toFixed(1) + ' km</div>';
+            if (wd.pressure != null) html += '<div>기압 ' + wd.pressure + ' hPa</div>';
+            if (wd.sunrise || wd.sunset) {
+                html += '<div>일출 ' + (wd.sunrise || '-') + ' · 일몰 ' + (wd.sunset || '-') + '</div>';
+            }
             if (wd.description) html += '<div>' + H.esc(wd.description) + '</div>';
+            if (wd.fcst) html += buildFcstHtml(wd.fcst);
         }
         if (ai) {
             const parts = [];
@@ -492,6 +547,7 @@
         const parts = [];
         if (wd.tempC != null)    parts.push(wd.tempC.toFixed(1) + '°C');
         if (wd.rainMm > 0)       parts.push('🌧 ' + wd.rainMm.toFixed(1) + 'mm');
+        if (wd.clouds != null)   parts.push('☁ ' + wd.clouds + '%');
         if (wd.humidity != null) parts.push('💧 ' + wd.humidity + '%');
         if (parts.length) tip += '<div class="osh-tip-sub">' + parts.join(' · ') + '</div>';
         return tip;
@@ -687,13 +743,24 @@
             const rainMm = (payload.rain && payload.rain['1h']) ? payload.rain['1h']
                          : (payload.rain && payload.rain['3h']) ? payload.rain['3h'] / 3
                          : (payload.snow && payload.snow['1h']) ? payload.snow['1h'] : 0;
+            const feelsK = payload.main && payload.main.feels_like;
+            const sunrise = payload.sys && payload.sys.sunrise ? H.formatHm(payload.sys.sunrise) : null;
+            const sunset  = payload.sys && payload.sys.sunset  ? H.formatHm(payload.sys.sunset)  : null;
             _weatherByCity[name] = {
                 tempC:       typeof tempK === 'number' ? tempK - 273.15 : null,
-                humidity:    payload.main.humidity,
+                feelsC:      typeof feelsK === 'number' ? feelsK - 273.15 : null,
+                humidity:    payload.main ? payload.main.humidity : null,
+                pressure:    payload.main ? payload.main.pressure : null,
+                clouds:      payload.clouds ? payload.clouds.all : null,
+                visibility:  payload.visibility != null ? payload.visibility : null,
                 windSpeed:   payload.wind ? payload.wind.speed : null,
+                windDeg:     payload.wind ? payload.wind.deg : null,
                 description: payload.weather && payload.weather[0] ? payload.weather[0].description : null,
                 weatherMain: wMain,
                 rainMm:      rainMm,
+                fcst:        payload.fcst || null,
+                sunrise:     sunrise,
+                sunset:      sunset,
                 lat: payload.coord ? payload.coord.lat : null,
                 lon: payload.coord ? payload.coord.lon : null
             };
@@ -751,13 +818,7 @@
         } catch (e) { return 0; }
     }
 
-    function newsItemDateMs(n) {
-        if (!n) return 0;
-        if (n.createDTMs != null && !isNaN(Number(n.createDTMs))) return Number(n.createDTMs);
-        return parseDateMs(n.createDT || n.pubDate);
-    }
-
-    /* ========== 신규 마커 팝업 큐 (10초씩, 재난만 지도 이동) ========== */
+    /* ========== 신규 마커 팝업 큐 (10초씩, 재난/교통만) ========== */
     var _popupQueue   = [];
     var _popupRunning = false;
 
@@ -927,15 +988,11 @@
         return null;
     }
 
-    var _lastNewsRenderAt = 0;
-    var _newsReady        = false;
-
-    function newsDivIcon(count, isNew) {
+    function newsDivIcon(count) {
         const label = (count && count > 1) ? String(count) : '📰';
-        const cls = 'osh-mk osh-mk--news' + (isNew ? ' is-new' : '');
         return L.divIcon({
             className: '',
-            html: '<div class="' + cls + '"><span class="osh-mk__pulse"></span>' + H.esc(label) + '</div>',
+            html: '<div class="osh-mk osh-mk--news">' + H.esc(label) + '</div>',
             iconSize: [18, 18],
             iconAnchor: [9, 9]
         });
@@ -966,7 +1023,6 @@
                 if (grouped[hit.key].items.length < 5) grouped[hit.key].items.push(n);
             }
 
-            const renderAt = nowMs();
             Object.keys(grouped).forEach(function (k) {
                 const g = grouped[k];
                 const cityName = regionKeyToCityName(k);
@@ -974,8 +1030,7 @@
                     _newsByCity[cityName] = g.items;
                     return;
                 }
-                const isNew = _newsReady && newsItemDateMs(g.items[0]) > _lastNewsRenderAt;
-                const m = L.marker(g.coord, { icon: newsDivIcon(g.items.length, isNew) });
+                const m = L.marker(g.coord, { icon: newsDivIcon(g.items.length) });
                 const tipTitle = g.items[0] ? H.truncate(g.items[0].title || k, 40) : k;
                 const tipHtml =
                     '<div class="osh-tip-title">' + H.esc(k) + ' 뉴스</div>' +
@@ -991,12 +1046,9 @@
                     '<ul class="osh-popup__list">' + rows + '</ul></div>';
                 m.bindPopup(popupHtml, { maxWidth: 320, autoPan: false });
                 m.addTo(newsLayer);
-                if (isNew) scheduleAutoPopup(m, 1);
             });
 
             renderCityLayer();
-            _lastNewsRenderAt = renderAt;
-            _newsReady        = true;
         });
     }
 
