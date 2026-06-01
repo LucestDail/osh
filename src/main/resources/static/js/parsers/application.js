@@ -22,6 +22,10 @@
         if (!app) return;
 
         setText('currentTime', app.currentTime || '-');
+        if (app.serverNowMs != null) {
+            window.OSH = window.OSH || {};
+            window.OSH.serverNowMs = Number(app.serverNowMs);
+        }
         setText('systemArchitecture', app.systemArchitecture || '-');
         setText('systemName', app.systemName || '-');
         setText('systemLoad', app.systemLoadAverage != null ? Number(app.systemLoadAverage).toFixed(2) : '-');

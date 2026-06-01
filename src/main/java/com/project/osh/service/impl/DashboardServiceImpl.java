@@ -225,7 +225,9 @@ public class DashboardServiceImpl implements DashboardService {
         long freeMemory = Runtime.getRuntime().freeMemory() / (1024 * 1024);
         long usedMemory = totalMemory - freeMemory;
 
-        jsonObject.addProperty("currentTime", seoulSdf.format(new Timestamp(System.currentTimeMillis())));
+        long nowMs = System.currentTimeMillis();
+        jsonObject.addProperty("currentTime", seoulSdf.format(new Timestamp(nowMs)));
+        jsonObject.addProperty("serverNowMs", nowMs);
         jsonObject.addProperty("systemArchitecture", osBean.getArch());
         jsonObject.addProperty("systemName", osBean.getName());
         jsonObject.addProperty("systemVersion", osBean.getVersion());

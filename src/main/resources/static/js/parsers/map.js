@@ -669,6 +669,11 @@
         return null;
     }
 
+    /* ========== 서버 시각(KST ms) — SSE application.serverNowMs ========== */
+    function nowMs() {
+        return (window.OSH && window.OSH.serverNowMs) ? window.OSH.serverNowMs : Date.now();
+    }
+
     /* ========== 날짜 문자열 → ms 변환 ========== */
     function parseDateMs(str) {
         try {
@@ -713,8 +718,8 @@
         return 'info';
     }
 
-    var _prevEmrKeys      = new Set();
-    var _lastEmrRenderAt  = Date.now();
+    var _lastEmrRenderAt = 0;
+    var _emrReady        = false;
 
     function emergencyDivIcon(level, isNew) {
         const cls = 'osh-mk osh-mk--emr osh-mk--emr-' + (level || 'info') + (isNew ? ' is-new' : '');
@@ -733,16 +738,14 @@
             const root = H.unwrap(strJson, 'emergencyJson');
             const items = (root && Array.isArray(root.items)) ? root.items : [];
             if (!items.length) return;
-            const nextKeys = new Set();
+            const renderAt = nowMs();
             const max = Math.min(items.length, 100);
             for (let i = 0; i < max; i++) {
                 const it = items[i] || {};
                 const c = lookupRegionCoord(it.RCPTN_RGN_NM);
                 if (!c) continue;
-                const key = (it.CRT_DT || '') + '|' + (it.RCPTN_RGN_NM || '');
-                // isNew = 발생시각 > 마지막 재난 렌더 시각
-                const isNew = parseDateMs(it.CRT_DT) > _lastEmrRenderAt;
-                nextKeys.add(key);
+                // isNew = 이전 렌더 이후 발생 (첫 렌더는 blink 없음)
+                const isNew = _emrReady && parseDateMs(it.CRT_DT) > _lastEmrRenderAt;
                 const level = emergencyLevel(it.EMRG_STEP_NM);
                 const m = L.marker(c, { icon: emergencyDivIcon(level, isNew) });
                 const tipHtml =
@@ -758,15 +761,15 @@
                 m.addTo(emergencyLayer);
                 if (isNew) scheduleAutoPopup(m, 3);
             }
-            _prevEmrKeys     = nextKeys;
-            _lastEmrRenderAt = Date.now();
+            _lastEmrRenderAt = renderAt;
+            _emrReady        = true;
         });
     }
 
     /* ========== 교통 마커 ========== */
 
-    var _prevTrafficKeys     = new Set();
-    var _lastTrafficRenderAt = Date.now();
+    var _lastTrafficRenderAt = 0;
+    var _trafficReady        = false;
 
     function trafficDivIcon(isNew) {
         const cls = 'osh-mk osh-mk--traffic' + (isNew ? ' is-new' : '');
@@ -788,7 +791,7 @@
         const items = raw.slice().sort(function (a, b) {
             return String(b.startDate || '').localeCompare(String(a.startDate || ''));
         });
-        const renderAt = Date.now();
+        const renderAt = nowMs();
         const max = Math.min(items.length, 50);
         for (let i = 0; i < max; i++) {
             const it = items[i] || {};
@@ -798,8 +801,7 @@
             const lat = (x > 100 && x < 140) ? y : x;
             const lon = (x > 100 && x < 140) ? x : y;
             if (lat < 33 || lat > 39 || lon < 124 || lon > 132) continue;
-            // isNew = startDate > 마지막 렌더 시각 (이것만이 정확한 기준)
-            const isNew = parseDateMs(it.startDate) > _lastTrafficRenderAt;
+            const isNew = _trafficReady && parseDateMs(it.startDate) > _lastTrafficRenderAt;
             const m = L.marker([lat, lon], { icon: trafficDivIcon(isNew) });
             const tipHtml =
                 '<div class="osh-tip-title">' + H.esc(it.roadName || '-') + '</div>' +
@@ -815,6 +817,7 @@
             if (isNew) scheduleAutoPopup(m, 2);
         }
         _lastTrafficRenderAt = renderAt;
+        _trafficReady        = true;
     }
 
     /* ========== 뉴스 마커 ========== */
@@ -856,8 +859,8 @@
         return null;
     }
 
-    var _prevNewsKeys     = new Set();
-    var _lastNewsRenderAt = Date.now();
+    var _lastNewsRenderAt = 0;
+    var _newsReady        = false;
 
     function newsDivIcon(count, isNew) {
         const label = (count && count > 1) ? String(count) : '📰';
@@ -891,14 +894,11 @@
                 if (grouped[hit.key].items.length < 5) grouped[hit.key].items.push(n);
             }
 
-            const nextKeys = new Set();
+            const renderAt = nowMs();
             Object.keys(grouped).slice(0, 12).forEach(function (k) {
                 const g = grouped[k];
-                const topLink = g.items[0] ? (g.items[0].link || g.items[0].title || k) : k;
-                const key = k + '|' + topLink.slice(0, 60);
-                // isNew = 최신 기사 pubDate > 마지막 뉴스 렌더 시각
-                const isNew = parseDateMs(g.items[0] && g.items[0].pubDate) > _lastNewsRenderAt;
-                nextKeys.add(key);
+                const isNew = _newsReady
+                    && parseDateMs(g.items[0] && g.items[0].pubDate) > _lastNewsRenderAt;
                 const m = L.marker(g.coord, { icon: newsDivIcon(g.items.length, isNew) });
                 const tipTitle = g.items[0] ? H.truncate(g.items[0].title || k, 40) : k;
                 const tipHtml =
@@ -920,8 +920,8 @@
                 m.addTo(newsLayer);
                 if (isNew) scheduleAutoPopup(m, 1);
             });
-            _prevNewsKeys     = nextKeys;
-            _lastNewsRenderAt = Date.now();
+            _lastNewsRenderAt = renderAt;
+            _newsReady        = true;
         });
     }
 

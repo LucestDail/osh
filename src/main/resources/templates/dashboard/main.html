@@ -221,21 +221,21 @@
 </main>
 
 <!-- core helpers -->
-<script th:src="@{/js/core/helpers.js}"     src="/js/core/helpers.js"></script>
-<script th:src="@{/js/core/pager.js}"       src="/js/core/pager.js"></script>
-<script th:src="@{/js/core/eventSource.js}" src="/js/core/eventSource.js"></script>
-<script th:src="@{/js/core/theme.js}"       src="/js/core/theme.js"></script>
+<script th:src="@{/js/core/helpers.js(v=${staticVersion})}"     src="/js/core/helpers.js"></script>
+<script th:src="@{/js/core/pager.js(v=${staticVersion})}"       src="/js/core/pager.js"></script>
+<script th:src="@{/js/core/eventSource.js(v=${staticVersion})}" src="/js/core/eventSource.js"></script>
+<script th:src="@{/js/core/theme.js(v=${staticVersion})}"       src="/js/core/theme.js"></script>
 
 <!-- parsers -->
-<script th:src="@{/js/parsers/application.js}" src="/js/parsers/application.js"></script>
-<script th:src="@{/js/parsers/weather.js}"     src="/js/parsers/weather.js"></script>
-<script th:src="@{/js/parsers/emergency.js}"   src="/js/parsers/emergency.js"></script>
-<script th:src="@{/js/parsers/traffic.js}"     src="/js/parsers/traffic.js"></script>
-<script th:src="@{/js/parsers/news.js}"        src="/js/parsers/news.js"></script>
-<script th:src="@{/js/parsers/air.js}"         src="/js/parsers/air.js"></script>
-<script th:src="@{/js/parsers/map.js}"         src="/js/parsers/map.js"></script>
+<script th:src="@{/js/parsers/application.js(v=${staticVersion})}" src="/js/parsers/application.js"></script>
+<script th:src="@{/js/parsers/weather.js(v=${staticVersion})}"     src="/js/parsers/weather.js"></script>
+<script th:src="@{/js/parsers/emergency.js(v=${staticVersion})}"   src="/js/parsers/emergency.js"></script>
+<script th:src="@{/js/parsers/traffic.js(v=${staticVersion})}"     src="/js/parsers/traffic.js"></script>
+<script th:src="@{/js/parsers/news.js(v=${staticVersion})}"        src="/js/parsers/news.js"></script>
+<script th:src="@{/js/parsers/air.js(v=${staticVersion})}"         src="/js/parsers/air.js"></script>
+<script th:src="@{/js/parsers/map.js(v=${staticVersion})}"         src="/js/parsers/map.js"></script>
 
 <!-- entry -->
-<script th:src="@{/js/main-dashboard.js}" src="/js/main-dashboard.js"></script>
+<script th:src="@{/js/main-dashboard.js(v=${staticVersion})}" src="/js/main-dashboard.js"></script>
 </body>
 </html>
