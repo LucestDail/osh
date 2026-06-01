@@ -41,6 +41,31 @@
     let _weatherByCity = {};    // cityName → { tempC, humidity, windSpeed, description, lat, lon }
     let _airGradeByCity = {};   // cityName → grade string
     let _airInfoByCity = {};    // cityName → { grade, pm10, pm25, label }
+    let _newsByCity = {};       // cityName → [news items] (도시 마커 팝업에 통합)
+
+    /** regions.json 키 → 19도시명 */
+    const REGION_KEY_TO_CITY = {
+        '서울': '서울', '서울특별시': '서울',
+        '부산': '부산', '부산광역시': '부산',
+        '대구': '대구', '대구광역시': '대구',
+        '인천': '인천', '인천광역시': '인천',
+        '광주': '광주', '광주광역시': '광주',
+        '대전': '대전', '대전광역시': '대전',
+        '울산': '울산', '울산광역시': '울산',
+        '세종': '대전', '세종특별자치시': '대전',
+        '수원': '수원', '수원시': '수원',
+        '고양': '고양', '고양시': '고양',
+        '용인': '용인', '용인시': '용인',
+        '포항': '포항', '포항시': '포항',
+        '김천': '김천', '김천시': '김천',
+        '창원': '창원', '창원시': '창원',
+        '김해': '김해', '김해시': '김해',
+        '춘천': '춘천', '춘천시': '춘천',
+        '원주': '원주', '원주시': '원주',
+        '강릉': '강릉', '강릉시': '강릉',
+        '속초': '속초', '속초시': '속초',
+        '제주': '제주', '제주특별자치도': '제주', '제주도': '제주'
+    };
 
     // 시도 → 대표 도시 매핑 (여러 도시는 온도 평균, 툴팁은 첫번째 도시)
     const PROVINCE_CITIES = {
@@ -156,10 +181,10 @@
             _owmCloudsLayer.addTo(map);
             _owmPrecipLayer.addTo(map);
             // 마커 레이어는 항상 위에
-            cityLayer.bringToFront();
-            emergencyLayer.bringToFront();
-            trafficLayer.bringToFront();
             newsLayer.bringToFront();
+            cityLayer.bringToFront();
+            trafficLayer.bringToFront();
+            emergencyLayer.bringToFront();
         } else {
             if (map.hasLayer(_owmCloudsLayer)) map.removeLayer(_owmCloudsLayer);
             if (map.hasLayer(_owmPrecipLayer)) map.removeLayer(_owmPrecipLayer);
@@ -199,10 +224,10 @@
         // 레이어 순서: tile → choropleth → city → emergency → traffic → news
         if (choroplethLayer) {
             choroplethLayer.bringToBack();
-            cityLayer.bringToFront();
-            emergencyLayer.bringToFront();
-            trafficLayer.bringToFront();
             newsLayer.bringToFront();
+            cityLayer.bringToFront();
+            trafficLayer.bringToFront();
+            emergencyLayer.bringToFront();
         }
     }
 
@@ -341,10 +366,10 @@
 
         choroplethLayer.addTo(map);
         // 레이어 순서 정리
-        cityLayer.bringToFront();
-        emergencyLayer.bringToFront();
-        trafficLayer.bringToFront();
         newsLayer.bringToFront();
+        cityLayer.bringToFront();
+        trafficLayer.bringToFront();
+        emergencyLayer.bringToFront();
     }
 
     /* ========== 온도 범례 ========== */
@@ -379,10 +404,34 @@
 
     /* ========== 도시 레이어 (circleMarker + permanent tooltip) ========== */
 
+    function regionKeyToCityName(regionKey) {
+        if (!regionKey) return null;
+        if (REGION_KEY_TO_CITY[regionKey]) return REGION_KEY_TO_CITY[regionKey];
+        if (_weatherByCity[regionKey]) return regionKey;
+        const short = String(regionKey).replace(/(특별자치시|특별자치도|광역시|특별시|시|군|구)$/g, '').trim();
+        if (REGION_KEY_TO_CITY[short]) return REGION_KEY_TO_CITY[short];
+        if (_weatherByCity[short]) return short;
+        return null;
+    }
+
+    function buildCityNewsHtml(cityName) {
+        const items = _newsByCity[cityName];
+        if (!items || !items.length) return '';
+        const rows = items.slice(0, 5).map(function (it) {
+            const time = it.createDT ? H.formatDateTime(it.createDT) : '';
+            return '<li><b>' + H.esc(H.truncate(it.title || '-', 80)) + '</b>' +
+                (time ? ' <span class="osh-popup__time">' + time + '</span>' : '') +
+                (it.content ? '<div class="osh-popup__sub">' + H.esc(H.truncate(it.content, 120)) + '</div>' : '') +
+                '</li>';
+        }).join('');
+        return '<div class="osh-popup__section"><b>관련 뉴스</b><ul class="osh-popup__list">' + rows + '</ul></div>';
+    }
+
     function buildCityPopupHtml(cityName) {
         const wd = _weatherByCity[cityName];
         const ai = _airInfoByCity[cityName];
-        let html = '<div class="osh-popup"><b>' + H.esc(cityName) + '</b>';
+        const wxIcon = weatherIconChar(wd && wd.weatherMain);
+        let html = '<div class="osh-popup"><b>' + wxIcon + ' ' + H.esc(cityName) + '</b>';
         if (wd) {
             html += '<div>기온 ' + (wd.tempC != null ? wd.tempC.toFixed(1) : '-') + '°C</div>';
             if (wd.rainMm > 0) html += '<div>강수량 🌧 ' + wd.rainMm.toFixed(1) + ' mm/h</div>';
@@ -397,26 +446,48 @@
             if (ai.pm25 != null && ai.pm25 >= 0) parts.push('PM2.5 ' + ai.pm25 + 'µg');
             if (parts.length) html += '<div>대기질 ' + H.esc(parts.join(' · ')) + '</div>';
         }
+        html += buildCityNewsHtml(cityName);
         html += '</div>';
         return html;
+    }
+
+    function weatherIconChar(wMain) {
+        const condIcon = {
+            Clear: '☀️', Clouds: '☁️', Rain: '🌧️', Drizzle: '🌦️',
+            Snow: '❄️', Thunderstorm: '⛈️', Mist: '🌫️', Fog: '🌫️', Haze: '🌫️'
+        };
+        return condIcon[wMain] || '🌡️';
     }
 
     function weatherFillColor(wMain) {
         if (!wMain) return null;
         const w = wMain.toLowerCase();
-        if (w === 'clear')                        return '#facc15'; // 맑음 - 노랑
-        if (w === 'clouds')                       return '#94a3b8'; // 흐림 - 회색
-        if (w === 'rain' || w === 'drizzle')      return '#3b82f6'; // 비 - 파랑
-        if (w === 'snow')                         return '#bae6fd'; // 눈 - 하늘
-        if (w === 'thunderstorm')                 return '#7c3aed'; // 뇌우 - 보라
-        if (w === 'mist' || w === 'fog' || w === 'haze') return '#cbd5e1'; // 안개 - 연회색
+        if (w === 'clear')                        return '#facc15';
+        if (w === 'clouds')                       return '#94a3b8';
+        if (w === 'rain' || w === 'drizzle')      return '#3b82f6';
+        if (w === 'snow')                         return '#bae6fd';
+        if (w === 'thunderstorm')                 return '#7c3aed';
+        if (w === 'mist' || w === 'fog' || w === 'haze') return '#cbd5e1';
         return null;
     }
 
+    function cityDivIcon(wd, newsCount) {
+        const icon = weatherIconChar(wd.weatherMain);
+        const ring = weatherFillColor(wd.weatherMain) || tempToFillColor(wd.tempC) || '#94a3b8';
+        const badge = newsCount
+            ? '<span class="osh-city-mk__news">' + (newsCount > 1 ? String(newsCount) : '📰') + '</span>'
+            : '';
+        return L.divIcon({
+            className: '',
+            html: '<div class="osh-city-mk" style="--city-ring:' + ring + '">' +
+                '<span class="osh-city-mk__wx" aria-hidden="true">' + icon + '</span>' + badge + '</div>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+    }
+
     function cityHoverTip(name, wd) {
-        const condIcon = { Clear:'☀', Clouds:'⛅', Rain:'🌧', Drizzle:'🌦',
-                           Snow:'❄', Thunderstorm:'⛈', Mist:'🌫', Fog:'🌫', Haze:'🌫' };
-        const icon = condIcon[wd.weatherMain] || '🌡';
+        const icon = weatherIconChar(wd.weatherMain);
         let tip = '<div class="osh-tip-title">' + H.esc(name) + ' ' + icon + '</div>';
         const parts = [];
         if (wd.tempC != null)    parts.push(wd.tempC.toFixed(1) + '°C');
@@ -433,25 +504,18 @@
             const wd = _weatherByCity[name];
             if (wd.lat == null || wd.lon == null) return;
 
-            const fill = weatherFillColor(wd.weatherMain) || tempToFillColor(wd.tempC);
-            const c = L.circleMarker([wd.lat, wd.lon], {
-                radius: 5,
-                fillColor: fill,
-                color: '#fff',
-                weight: 1.5,
-                fillOpacity: 0.95,
-                opacity: 1,
-                pane: 'markerPane'
+            const newsCount = (_newsByCity[name] && _newsByCity[name].length) || 0;
+            const c = L.marker([wd.lat, wd.lon], {
+                icon: cityDivIcon(wd, newsCount),
+                zIndexOffset: newsCount ? 400 : 200
             });
-            // 도시명 permanent label (non-interactive)
             c.bindTooltip(H.esc(name), {
                 permanent: true,
                 direction: 'right',
-                offset: [6, 0],
+                offset: [8, 0],
                 className: 'osh-city-label',
                 interactive: false
             });
-            // hover 툴팁 (날씨 상세)
             c.on('mouseover', function () {
                 c.unbindTooltip();
                 c.bindTooltip(cityHoverTip(name, wd), {
@@ -465,12 +529,12 @@
                 c.bindTooltip(H.esc(name), {
                     permanent: true,
                     direction: 'right',
-                    offset: [6, 0],
+                    offset: [8, 0],
                     className: 'osh-city-label',
                     interactive: false
                 });
             });
-            c.bindPopup(buildCityPopupHtml(name), { maxWidth: 200 });
+            c.bindPopup(buildCityPopupHtml(name), { maxWidth: 320, autoPan: false });
             c.addTo(cityLayer);
         });
     }
@@ -881,9 +945,13 @@
         if (!ensureMap()) return;
         loadRegions().then(function () {
             newsLayer.clearLayers();
+            _newsByCity = {};
             const root = H.unwrap(strJson, 'yeonhapJson');
             const list = (root && root.data && Array.isArray(root.data.items)) ? root.data.items : [];
-            if (!list.length) return;
+            if (!list.length) {
+                renderCityLayer();
+                return;
+            }
 
             const idx = buildRegionIndex();
             const grouped = {};
@@ -899,10 +967,14 @@
             }
 
             const renderAt = nowMs();
-            Object.keys(grouped).slice(0, 12).forEach(function (k) {
+            Object.keys(grouped).forEach(function (k) {
                 const g = grouped[k];
-                const isNew = _newsReady
-                    && newsItemDateMs(g.items[0]) > _lastNewsRenderAt;
+                const cityName = regionKeyToCityName(k);
+                if (cityName && _weatherByCity[cityName]) {
+                    _newsByCity[cityName] = g.items;
+                    return;
+                }
+                const isNew = _newsReady && newsItemDateMs(g.items[0]) > _lastNewsRenderAt;
                 const m = L.marker(g.coord, { icon: newsDivIcon(g.items.length, isNew) });
                 const tipTitle = g.items[0] ? H.truncate(g.items[0].title || k, 40) : k;
                 const tipHtml =
@@ -910,20 +982,19 @@
                     '<div class="osh-tip-sub">' + H.esc(tipTitle) + '</div>';
                 m.bindTooltip(tipHtml, { className: 'osh-map-tip', sticky: false, offset: [10, 0] });
                 const rows = g.items.slice(0, 3).map(function (it) {
-                    const time = it.createDT ? H.formatDateTime(it.createDT) : (it.pubDate ? H.formatDateTime(it.pubDate) : '');
-                    const link = it.link
-                        ? '<a href="' + H.esc(it.link) + '" target="_blank" rel="noopener">' + H.esc(it.title || '-') + '</a>'
-                        : H.esc(it.title || '-');
-                    return '<li>' + link + (time ? ' <span class="osh-popup__time">' + time + '</span>' : '') + '</li>';
+                    const time = it.createDT ? H.formatDateTime(it.createDT) : '';
+                    return '<li><b>' + H.esc(it.title || '-') + '</b>' +
+                        (time ? ' <span class="osh-popup__time">' + time + '</span>' : '') + '</li>';
                 }).join('');
                 const popupHtml =
                     '<div class="osh-popup"><b>' + H.esc(k) + ' 관련 뉴스</b>' +
-                    '<ul class="osh-popup__list">' + rows + '</ul>' +
-                    '</div>';
+                    '<ul class="osh-popup__list">' + rows + '</ul></div>';
                 m.bindPopup(popupHtml, { maxWidth: 320, autoPan: false });
                 m.addTo(newsLayer);
                 if (isNew) scheduleAutoPopup(m, 1);
             });
+
+            renderCityLayer();
             _lastNewsRenderAt = renderAt;
             _newsReady        = true;
         });

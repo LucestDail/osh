@@ -304,6 +304,46 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
 }
 .leaflet-tooltip.osh-city-label::before { display: none; }
 
+/* 도시 날씨 아이콘 마커 */
+.osh-city-mk {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg-elev);
+    border: 2.5px solid var(--city-ring, #94a3b8);
+    border-radius: 50%;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.35);
+    cursor: pointer;
+}
+.osh-city-mk__wx {
+    font-size: 15px;
+    line-height: 1;
+    pointer-events: none;
+}
+.osh-city-mk__news {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+    background: rgba(99,102,241,0.95);
+    border: 1.5px solid var(--color-bg-elev);
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+.osh-popup__section { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--color-border); }
+.osh-popup__sub { font-size: 10px; color: var(--color-fg-muted); margin-top: 2px; }
+
 /* 현재 위치 버튼 */
 .osh-loc-ctrl { margin-top: 10px !important; }
 .osh-loc-btn {
