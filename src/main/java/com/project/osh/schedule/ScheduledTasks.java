@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.project.osh.service.DashboardService;
 import com.project.osh.service.DashboardSinks;
+import com.project.osh.service.SplitBriefingCacheService;
 
 @Component
 public class ScheduledTasks {
@@ -19,10 +20,15 @@ public class ScheduledTasks {
 
     private final DashboardService dashboardService;
     private final DashboardSinks sinks;
+    private final SplitBriefingCacheService briefingCache;
 
-    public ScheduledTasks(DashboardService dashboardService, DashboardSinks sinks) {
+    public ScheduledTasks(
+            DashboardService dashboardService,
+            DashboardSinks sinks,
+            SplitBriefingCacheService briefingCache) {
         this.dashboardService = dashboardService;
         this.sinks = sinks;
+        this.briefingCache = briefingCache;
     }
 
     /**
@@ -44,12 +50,20 @@ public class ScheduledTasks {
     }
 
     /**
-     * 1\uc2dc\uac04 \uc8fc\uae30: 19\ub3c4\uc2dc \ub0a0\uc528 + \ub300\uae30\uc9c8 \uc77c\uad04 \uac31\uc2e0.
+     * 1시간 주기: 31도시 날씨 + 대기질 일괄 갱신.
      */
     @Scheduled(fixedDelay = 3_600_000)
     public void renewWeather() {
         safe("weather", dashboardService::renewWeatherJsonObject);
         safe("air",     dashboardService::renewAirJsonObject);
+    }
+
+    /**
+     * 1시간 주기: AI 한줄 브리핑 서버 캐시 갱신 (사용자 없을 때도 최신 유지).
+     */
+    @Scheduled(initialDelay = 120_000, fixedDelay = 3_600_000)
+    public void renewSplitBriefing() {
+        safe("split-briefing", briefingCache::refreshScheduled);
     }
 
     /**

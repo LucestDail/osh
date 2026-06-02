@@ -67,18 +67,35 @@
                 if (el) el.textContent = state;
             });
         }
-        function refresh() {
+        function applyBriefingMeta(res) {
+            if (!updated || !res) return;
+            var cached = res.headers.get('X-Briefing-Cached') === 'true';
+            var genAt = res.headers.get('X-Briefing-Generated-At') || '';
+            if (cached && genAt) {
+                updated.textContent = '캐시 ' + genAt.slice(11, 16);
+                updated.title = '서버 캐시 (' + genAt + ') · 1시간마다 자동 갱신';
+            } else if (genAt) {
+                updated.textContent = '생성 ' + genAt.slice(11, 16);
+                updated.title = '방금 생성 (' + genAt + ')';
+            } else {
+                updated.textContent = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' });
+            }
+        }
+
+        function refresh(userAccess) {
             const icon = document.getElementById('splitRefreshIcon');
             if (icon) icon.classList.add('is-spinning');
-            if (updated) updated.textContent = '생성 중…';
-            fetch(ctx + 'api/gemini/dashboard-split', { headers: { 'Accept': 'application/json' }})
-                .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-                .then(function (data) {
+            if (updated) updated.textContent = userAccess ? '생성 중…' : '불러오는 중…';
+            var url = ctx + 'api/gemini/dashboard-split' + (userAccess ? '?access=true' : '');
+            fetch(url, { headers: { 'Accept': 'application/json' }})
+                .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json().then(function (data) { return { data: data, res: r }; }); })
+                .then(function (wrap) {
+                    var data = wrap.data;
                     keys.forEach(function (k, i) {
                         const el = document.getElementById('split' + ids[i]);
                         if (el) el.textContent = data[k] || '-';
                     });
-                    if (updated) updated.textContent = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' });
+                    applyBriefingMeta(wrap.res);
                 })
                 .catch(function (e) {
                     console.error('split summary', e);
@@ -90,9 +107,8 @@
                 });
         }
         const btn = document.getElementById('splitRefreshBtn');
-        if (btn) btn.addEventListener('click', refresh);
-        refresh();
-        setInterval(refresh, 10 * 60 * 1000);
+        if (btn) btn.addEventListener('click', function () { refresh(true); });
+        refresh(true);
     }
 
     /* ===== 지도 전체화면 ===== */

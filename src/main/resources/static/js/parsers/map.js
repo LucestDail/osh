@@ -116,6 +116,40 @@
         catch (e) { /* noop */ }
     }
 
+    /** L.layerGroup 은 bringToFront 없음 — 자식 레이어에 적용 */
+    function bringGroupToFront(group) {
+        if (!group) return;
+        if (typeof group.bringToFront === 'function') {
+            group.bringToFront();
+            return;
+        }
+        if (typeof group.eachLayer === 'function') {
+            group.eachLayer(function (layer) {
+                if (layer && typeof layer.bringToFront === 'function') layer.bringToFront();
+            });
+        }
+    }
+
+    function bringGroupToBack(group) {
+        if (!group) return;
+        if (typeof group.bringToBack === 'function') {
+            group.bringToBack();
+            return;
+        }
+        if (typeof group.eachLayer === 'function') {
+            group.eachLayer(function (layer) {
+                if (layer && typeof layer.bringToBack === 'function') layer.bringToBack();
+            });
+        }
+    }
+
+    function bringOverlayLayersToFront() {
+        bringGroupToFront(newsLayer);
+        bringGroupToFront(cityLayer);
+        bringGroupToFront(trafficLayer);
+        bringGroupToFront(emergencyLayer);
+    }
+
     function ensureMap() {
         if (map) return map;
         if (typeof L === 'undefined') return null;
@@ -192,10 +226,7 @@
             _owmCloudsLayer.addTo(map);
             _owmPrecipLayer.addTo(map);
             // 마커 레이어는 항상 위에
-            newsLayer.bringToFront();
-            cityLayer.bringToFront();
-            trafficLayer.bringToFront();
-            emergencyLayer.bringToFront();
+            bringOverlayLayersToFront();
         } else {
             if (map.hasLayer(_owmCloudsLayer)) map.removeLayer(_owmCloudsLayer);
             if (map.hasLayer(_owmPrecipLayer)) map.removeLayer(_owmPrecipLayer);
@@ -234,11 +265,8 @@
         }).addTo(map);
         // 레이어 순서: tile → choropleth → city → emergency → traffic → news
         if (choroplethLayer) {
-            choroplethLayer.bringToBack();
-            newsLayer.bringToFront();
-            cityLayer.bringToFront();
-            trafficLayer.bringToFront();
-            emergencyLayer.bringToFront();
+            bringGroupToBack(choroplethLayer);
+            bringOverlayLayersToFront();
         }
     }
 
@@ -376,11 +404,7 @@
         });
 
         choroplethLayer.addTo(map);
-        // 레이어 순서 정리
-        newsLayer.bringToFront();
-        cityLayer.bringToFront();
-        trafficLayer.bringToFront();
-        emergencyLayer.bringToFront();
+        bringOverlayLayersToFront();
     }
 
     /* ========== 온도 범례 ========== */

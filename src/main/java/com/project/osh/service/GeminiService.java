@@ -27,17 +27,27 @@ public class GeminiService {
     private final RestTemplate restTemplate;
     private final String apiKey;
     private final String apiUrl;
+    private final boolean gatewayMode;
+    private final String gatewayToken;
+    private final String gatewayServiceId;
     private final NewsService newsService;
     private final DashboardService dashboardService;
 
     public GeminiService(
-            @Value("${gemini.api.key}") String apiKey,
+            @Value("${gemini.api.key:}") String apiKey,
             @Value("${gemini.api.url}") String apiUrl,
+            @Value("${gemini.gateway.token:}") String gatewayToken,
+            @Value("${gemini.gateway.service-id:osh}") String gatewayServiceId,
             NewsService newsService,
             @Lazy DashboardService dashboardService) {
         this.restTemplate = new RestTemplate();
-        this.apiKey = apiKey;
+        this.apiKey = apiKey != null ? apiKey : "";
         this.apiUrl = apiUrl;
+        this.gatewayToken = gatewayToken != null ? gatewayToken : "";
+        this.gatewayServiceId = gatewayServiceId != null && !gatewayServiceId.isBlank()
+                ? gatewayServiceId : "osh";
+        this.gatewayMode = !this.gatewayToken.isBlank()
+                || !apiUrl.contains("generativelanguage.googleapis.com");
         this.newsService = newsService;
         this.dashboardService = dashboardService;
     }
@@ -96,15 +106,30 @@ public class GeminiService {
         }
     }
 
-    /** Gemini 호출. 내부 전용 (외부에 노출하지 않음). */
+    /** Gemini 호출. gateway 경유 또는 Google 직연결. 내부 전용. */
     private String generateContent(String prompt) {
         try {
             GeminiRequest request = createRequest(prompt);
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
+            String url;
+            if (gatewayMode) {
+                if (gatewayToken.isBlank()) {
+                    throw new IllegalStateException(
+                            "gemini.gateway.token (AI_GATEWAY_TOKEN) is required for gateway mode");
+                }
+                url = apiUrl;
+                headers.set("X-Gateway-Token", gatewayToken);
+                headers.set("X-Service-Id", gatewayServiceId);
+            } else {
+                if (apiKey.isBlank()) {
+                    throw new IllegalStateException("gemini.api.key is required for direct Google API mode");
+                }
+                url = apiUrl + "?key=" + apiKey;
+            }
+
             HttpEntity<GeminiRequest> entity = new HttpEntity<>(request, headers);
-            String url = apiUrl + "?key=" + apiKey;
 
             GeminiResponse response = restTemplate.postForObject(url, entity, GeminiResponse.class);
 
