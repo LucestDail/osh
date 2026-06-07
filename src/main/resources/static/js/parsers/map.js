@@ -166,6 +166,11 @@
             maxZoom: 14,
             minZoom: 5
         });
+        if (!map.getPane('weatherOverlay')) {
+            const wxPane = map.createPane('weatherOverlay');
+            wxPane.style.zIndex = 450; /* overlayPane(400) 위, markerPane(600) 아래 */
+            wxPane.style.pointerEvents = 'none';
+        }
         fitToKorea();
 
         setTimeout(function () {
@@ -204,16 +209,20 @@
             keepBuffer: 1,
             crossOrigin: false
         };
-        // 구름 레이어: 낮은 불투명도(배경 질감용)
+        // 구름 레이어: 배경 질감 (강수 아래)
         _owmCloudsLayer = L.tileLayer(base + '/clouds_new/{z}/{x}/{y}', {
             ...commonOpts,
-            opacity: 0.25,
+            pane: 'weatherOverlay',
+            opacity: 0.3,
+            className: 'osh-cloud-tiles',
             attribution: '© OpenWeatherMap'
         });
-        // 강수 레이어: 높은 불투명도(선명하게)
+        // 강수 레이어: 코로플레스 위에 올려 선명하게
         _owmPrecipLayer = L.tileLayer(base + '/precipitation_new/{z}/{x}/{y}', {
             ...commonOpts,
-            opacity: 0.88,
+            pane: 'weatherOverlay',
+            opacity: 1,
+            className: 'osh-precip-tiles',
             attribution: '© OpenWeatherMap'
         });
     }
@@ -543,7 +552,7 @@
         const w = wMain.toLowerCase();
         if (w === 'clear')                        return '#facc15';
         if (w === 'clouds')                       return '#94a3b8';
-        if (w === 'rain' || w === 'drizzle')      return '#3b82f6';
+        if (w === 'rain' || w === 'drizzle')      return '#1d4ed8';
         if (w === 'snow')                         return '#bae6fd';
         if (w === 'thunderstorm')                 return '#7c3aed';
         if (w === 'mist' || w === 'fog' || w === 'haze') return '#cbd5e1';

@@ -383,7 +383,15 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
 .osh-wx-btn.is-active {
     filter: grayscale(0);
     opacity: 1;
-    background: var(--color-primary-soft) !important;
+    background: rgba(29, 78, 216, 0.25) !important;
+}
+
+/* OWM 강수 타일 — 채도·대비 강화 (옅은 파랑 보정) */
+img.osh-precip-tiles {
+    filter: saturate(2.4) contrast(1.65) brightness(0.92) hue-rotate(-12deg);
+}
+img.osh-cloud-tiles {
+    filter: saturate(1.2) contrast(1.1);
 }
 
 /* GPS 현재 위치 마커 */
