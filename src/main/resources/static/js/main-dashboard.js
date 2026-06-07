@@ -82,33 +82,49 @@
             }
         }
 
-        function refresh(userAccess) {
+        function isBriefingFailed(data) {
+            return !data || data.news === '요약 생성 실패';
+        }
+
+        function refresh(userAccess, retryLeft) {
+            retryLeft = retryLeft || 0;
             const icon = document.getElementById('splitRefreshIcon');
             if (icon) icon.classList.add('is-spinning');
-            if (updated) updated.textContent = userAccess ? '생성 중…' : '불러오는 중…';
+            if (updated) {
+                updated.textContent = retryLeft > 0
+                    ? '재시도 중… (' + retryLeft + ')'
+                    : (userAccess ? '생성 중…' : '불러오는 중…');
+            }
             var url = ctx + 'api/gemini/dashboard-split' + (userAccess ? '?access=true' : '');
             fetch(url, { headers: { 'Accept': 'application/json' }})
                 .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json().then(function (data) { return { data: data, res: r }; }); })
                 .then(function (wrap) {
                     var data = wrap.data;
+                    if (isBriefingFailed(data) && retryLeft < 2) {
+                        setTimeout(function () { refresh(true, retryLeft + 1); }, 3000 * (retryLeft + 1));
+                        return;
+                    }
                     keys.forEach(function (k, i) {
                         const el = document.getElementById('split' + ids[i]);
                         if (el) el.textContent = data[k] || '-';
                     });
                     applyBriefingMeta(wrap.res);
+                    if (icon) icon.classList.remove('is-spinning');
                 })
                 .catch(function (e) {
                     console.error('split summary', e);
+                    if (retryLeft < 2) {
+                        setTimeout(function () { refresh(true, retryLeft + 1); }, 3000 * (retryLeft + 1));
+                        return;
+                    }
                     paint('요약 실패');
                     if (updated) updated.textContent = '실패';
-                })
-                .finally(function () {
                     if (icon) icon.classList.remove('is-spinning');
                 });
         }
         const btn = document.getElementById('splitRefreshBtn');
-        if (btn) btn.addEventListener('click', function () { refresh(true); });
-        refresh(true);
+        if (btn) btn.addEventListener('click', function () { refresh(true, 0); });
+        refresh(true, 0);
     }
 
     /* ===== 지도 전체화면 ===== */

@@ -74,16 +74,22 @@ public class SplitBriefingCacheService {
                 log.debug("AI 브리핑 스케줄 갱신 스킵 — 생성 중");
                 return;
             }
-            try {
-                generating = true;
-                long t0 = System.currentTimeMillis();
-                cachedJson = geminiService.generateSplitSummary();
-                cachedAtMs = System.currentTimeMillis();
+            generating = true;
+        }
+        try {
+            long t0 = System.currentTimeMillis();
+            String result = geminiService.generateSplitSummary();
+            if (isValidBriefing(result)) {
+                storeCache(result);
                 log.info("AI 브리핑 스케줄 갱신 완료 ({} ms, 다음 TTL {}분)",
-                        cachedAtMs - t0, cacheTtlMs / 60_000);
-            } catch (Exception e) {
-                log.error("AI 브리핑 스케줄 갱신 실패: {}", e.getMessage());
-            } finally {
+                        System.currentTimeMillis() - t0, cacheTtlMs / 60_000);
+            } else {
+                log.warn("AI 브리핑 스케줄 갱신 — 실패 응답, 기존 캐시 유지");
+            }
+        } catch (Exception e) {
+            log.error("AI 브리핑 스케줄 갱신 실패: {}", e.getMessage());
+        } finally {
+            synchronized (lock) {
                 generating = false;
             }
         }
@@ -99,32 +105,77 @@ public class SplitBriefingCacheService {
     }
 
     private boolean isCacheValid() {
-        return cachedJson != null && !cachedJson.isBlank()
+        return isValidBriefing(cachedJson)
                 && (System.currentTimeMillis() - cachedAtMs) < cacheTtlMs;
     }
 
     private String regenerateLocked(String reason) {
         synchronized (lock) {
-            if (generating && cachedJson != null && !cachedJson.isBlank()) {
-                log.info("AI 브리핑 {} — 생성 중, 기존 캐시 반환", reason);
-                return cachedJson;
-            }
-            try {
-                generating = true;
-                long t0 = System.currentTimeMillis();
-                cachedJson = geminiService.generateSplitSummary();
-                cachedAtMs = System.currentTimeMillis();
-                log.info("AI 브리핑 {} 생성 완료 ({} ms)", reason, cachedAtMs - t0);
-                return cachedJson;
-            } catch (Exception e) {
-                log.error("AI 브리핑 {} 생성 실패: {}", reason, e.getMessage());
-                if (cachedJson != null && !cachedJson.isBlank()) {
+            if (generating) {
+                if (isValidBriefing(cachedJson)) {
+                    log.info("AI 브리핑 {} — 생성 중, 기존 캐시 반환", reason);
                     return cachedJson;
                 }
-                return "{\"weather\":\"-\",\"air\":\"-\",\"emergency\":\"-\",\"traffic\":\"-\",\"news\":\"요약 생성 실패\"}";
-            } finally {
+                log.info("AI 브리핑 {} — 생성 중, 대기 없이 실패 응답", reason);
+                return failureJson();
+            }
+            generating = true;
+        }
+
+        long t0 = System.currentTimeMillis();
+        try {
+            String result = null;
+            for (int attempt = 1; attempt <= 3; attempt++) {
+                result = geminiService.generateSplitSummary();
+                if (isValidBriefing(result)) {
+                    storeCache(result);
+                    log.info("AI 브리핑 {} 생성 완료 ({} ms, attempt {})", reason,
+                            System.currentTimeMillis() - t0, attempt);
+                    return result;
+                }
+                log.warn("AI 브리핑 {} attempt {}/3 — 실패 응답, 재시도", reason, attempt);
+                if (attempt < 3) {
+                    try {
+                        Thread.sleep(2_000L * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+            synchronized (lock) {
+                if (isValidBriefing(cachedJson)) {
+                    return cachedJson;
+                }
+            }
+            return result != null ? result : failureJson();
+        } catch (Exception e) {
+            log.error("AI 브리핑 {} 생성 실패: {}", reason, e.getMessage());
+            synchronized (lock) {
+                if (isValidBriefing(cachedJson)) {
+                    return cachedJson;
+                }
+            }
+            return failureJson();
+        } finally {
+            synchronized (lock) {
                 generating = false;
             }
         }
+    }
+
+    private void storeCache(String json) {
+        synchronized (lock) {
+            cachedJson = json;
+            cachedAtMs = System.currentTimeMillis();
+        }
+    }
+
+    private boolean isValidBriefing(String json) {
+        return json != null && !json.isBlank() && !json.contains("\"news\":\"요약 생성 실패\"");
+    }
+
+    private static String failureJson() {
+        return "{\"weather\":\"-\",\"air\":\"-\",\"emergency\":\"-\",\"traffic\":\"-\",\"news\":\"요약 생성 실패\"}";
     }
 }
