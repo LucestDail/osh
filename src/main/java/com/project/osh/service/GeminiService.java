@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -40,7 +41,10 @@ public class GeminiService {
             @Value("${gemini.gateway.service-id:osh}") String gatewayServiceId,
             NewsService newsService,
             @Lazy DashboardService dashboardService) {
-        this.restTemplate = new RestTemplate();
+        SimpleClientHttpRequestFactory rf = new SimpleClientHttpRequestFactory();
+        rf.setConnectTimeout(10_000);
+        rf.setReadTimeout(180_000);
+        this.restTemplate = new RestTemplate(rf);
         this.apiKey = apiKey != null ? apiKey : "";
         this.apiUrl = apiUrl;
         this.gatewayToken = gatewayToken != null ? gatewayToken : "";
@@ -86,11 +90,11 @@ public class GeminiService {
                     "7. news: 오늘 핵심 키워드 3~4개로 정치/사회/경제 흐름 요약. 같은 사건 묶어서.\n" +
                     "8. 반드시 아래 스키마의 순수 JSON 만 출력 (코드펜스 금지, 키 순서 고정):\n" +
                     "{\"weather\":\"...\",\"air\":\"...\",\"emergency\":\"...\",\"traffic\":\"...\",\"news\":\"...\"}\n\n" +
-                    "[weather wrapper] (main.temp 는 K, 먼저 섭씨로 변환 후 쓸 것)\n" + weatherCache + "\n\n" +
-                    "[air wrapper]\n" + airCache + "\n\n" +
-                    "[emergency wrapper]\n" + emergencyCache + "\n\n" +
-                    "[traffic wrapper]\n" + trafficCache + "\n\n" +
-                    "[news headlines]\n" + newsBrief.toString();
+                    "[weather wrapper] (main.temp 는 K, 먼저 섭씨로 변환 후 쓸 것)\n" + truncateForPrompt(weatherCache, 12_000) + "\n\n" +
+                    "[air wrapper]\n" + truncateForPrompt(airCache, 8_000) + "\n\n" +
+                    "[emergency wrapper]\n" + truncateForPrompt(emergencyCache, 8_000) + "\n\n" +
+                    "[traffic wrapper]\n" + truncateForPrompt(trafficCache, 8_000) + "\n\n" +
+                    "[news headlines]\n" + truncateForPrompt(newsBrief.toString(), 4_000);
 
             String raw = generateContent(prompt);
             return sanitizeJson(raw);
@@ -104,6 +108,12 @@ public class GeminiService {
             err.addProperty("news", "요약 생성 실패");
             return err.toString();
         }
+    }
+
+    private static String truncateForPrompt(String text, int maxChars) {
+        if (text == null) return "";
+        if (text.length() <= maxChars) return text;
+        return text.substring(0, maxChars) + "\n... (truncated)";
     }
 
     /** Gemini 호출. gateway 경유 또는 Google 직연결. 내부 전용. */
