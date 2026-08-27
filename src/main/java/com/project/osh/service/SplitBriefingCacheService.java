@@ -27,6 +27,7 @@ public class SplitBriefingCacheService {
 
     private final GeminiService geminiService;
     private final long cacheTtlMs;
+    private final boolean enabled;
 
     private final Object lock = new Object();
     private volatile String cachedJson;
@@ -37,9 +38,14 @@ public class SplitBriefingCacheService {
 
     public SplitBriefingCacheService(
             GeminiService geminiService,
-            @Value("${osh.briefing.cache-ttl-ms:3600000}") long cacheTtlMs) {
+            @Value("${osh.briefing.cache-ttl-ms:3600000}") long cacheTtlMs,
+            @Value("${osh.briefing.enabled:true}") boolean enabled) {
         this.geminiService = geminiService;
         this.cacheTtlMs = cacheTtlMs > 60_000 ? cacheTtlMs : 3_600_000L;
+        this.enabled = enabled;
+        if (!enabled) {
+            log.warn("AI 한줄 브리핑 비활성화됨(osh.briefing.enabled=false) — Gemini 호출을 하지 않습니다.");
+        }
     }
 
     public record SplitBriefingResult(String json, long generatedAtMs, boolean fromCache, boolean userAccess) {}
@@ -48,6 +54,10 @@ public class SplitBriefingCacheService {
      * @param userAccess true 이면 접근 기록 후 무조건 신규 생성
      */
     public SplitBriefingResult get(boolean userAccess) {
+        if (!enabled) {
+            // 기능 OFF — Gemini 호출 없이 일시 중지 안내만 반환(토큰 미소비).
+            return new SplitBriefingResult(pausedJson(), 0L, true, userAccess);
+        }
         if (userAccess) {
             accessCount.incrementAndGet();
             lastAccessAtMs.set(System.currentTimeMillis());
@@ -65,6 +75,9 @@ public class SplitBriefingCacheService {
 
     /** 1시간 스케줄용 — 접근 기록이 있을 때만 백그라운드 갱신 */
     public void refreshScheduled() {
+        if (!enabled) {
+            return; // 기능 OFF — 스케줄 갱신도 하지 않음
+        }
         if (accessCount.get() == 0) {
             log.debug("AI 브리핑 스케줄 스킵 — 접근 기록 없음");
             return;
@@ -177,5 +190,12 @@ public class SplitBriefingCacheService {
 
     private static String failureJson() {
         return "{\"weather\":\"-\",\"air\":\"-\",\"emergency\":\"-\",\"traffic\":\"-\",\"news\":\"요약 생성 실패\"}";
+    }
+
+    /** 기능 OFF 안내(각 카드 공통 문구). isBriefingFailed 오탐/재시도 루프를 피하려고 실패 문구는 쓰지 않는다. */
+    private static String pausedJson() {
+        String msg = "AI 브리핑을 일시 중지했습니다.";
+        return "{\"weather\":\"" + msg + "\",\"air\":\"" + msg + "\",\"emergency\":\"" + msg
+                + "\",\"traffic\":\"" + msg + "\",\"news\":\"" + msg + "\"}";
     }
 }

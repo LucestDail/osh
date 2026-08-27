@@ -2,6 +2,7 @@ package com.project.osh.service.impl;
 
 import com.project.osh.model.News;
 import com.project.osh.repository.news.NewsRepository;
+import com.project.osh.service.MyapiNewsClient;
 import com.project.osh.service.NewsService;
 import com.project.osh.service.EventEmitterService;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,9 @@ public class NewsServiceImpl implements NewsService {
     private NewsRepository newsRepository;
 
     @Autowired
+    private MyapiNewsClient myapiNewsClient;
+
+    @Autowired
     private EventEmitterService eventEmitterService;
 
     private List<News> cachedNews = new CopyOnWriteArrayList<>();
@@ -52,8 +56,8 @@ public class NewsServiceImpl implements NewsService {
         while (retryCount < maxRetries && !isInitialized) {
             try {
                 log.info("Loading initial news data (attempt {}/{})", retryCount + 1, maxRetries);
-                List<News> newsList = newsRepository.findTop100OrderByNewsCreateDTDesc();
-                
+                List<News> newsList = fetchTop100();
+
                 if (newsList != null && !newsList.isEmpty()) {
                     cachedNews = newsList;
                     eventEmitterService.broadcastNewsUpdate(newsList);
@@ -101,12 +105,25 @@ public class NewsServiceImpl implements NewsService {
         }
     }
 
+    /**
+     * 최신 뉴스 100건 조회. myapi REST(/api/social/news) 를 우선 소비하고,
+     * 비활성/실패 시 기존 MySQL 직결(newsRepository) 로 폴백한다.
+     */
+    private List<News> fetchTop100() {
+        List<News> viaMyapi = myapiNewsClient.fetchNews();
+        if (viaMyapi != null) {
+            return viaMyapi;
+        }
+        // myapi 비활성 또는 실패 → 기존 MySQL 직결 폴백(하위호환)
+        return newsRepository.findTop100OrderByNewsCreateDTDesc();
+    }
+
     @Override
     @Scheduled(fixedRate = 60000)
     public void updateNewsData() {
         try {
-            List<News> newsList = newsRepository.findTop100OrderByNewsCreateDTDesc();
-            
+            List<News> newsList = fetchTop100();
+
             if (newsList != null && !newsList.isEmpty()) {
                 cachedNews = newsList;
                 eventEmitterService.broadcastNewsUpdate(newsList);
