@@ -98,6 +98,22 @@ start_application
 MONITOR_PID=$!
 echo $MONITOR_PID > $MONITOR_PID_FILE
 
+# 🔴 2026-09-14: 종전에는 기동 직후 **생존 확인을 0초** 하고 "started successfully" 를
+#    찍었다. 프로세스가 즉시 죽어도(포트 충돌·설정 오류·JVM 옵션 오류) 성공으로 보였다.
+#    형제 스크립트 myapi/run.sh 는 `sleep 3 → is_running` 으로 제대로 한다 —
+#    "형제 파일 중 하나만 빠졌다" 의 전형.
+sleep 3
+APP_PID=$(cat "$PID_FILE" 2>/dev/null)
+if [ -z "$APP_PID" ] || ! kill -0 "$APP_PID" 2>/dev/null; then
+  echo ""
+  echo "=================================="
+  echo "✖ 기동 실패 — 프로세스가 3초 안에 죽었다 (PID=${APP_PID:-없음})"
+  echo "로그를 확인할 것: tail -50 $LOG_FILE"
+  echo "=================================="
+  tail -20 "$LOG_FILE" 2>/dev/null | sed 's/^/    /'
+  exit 1
+fi
+
 echo ""
 echo "=================================="
 echo "✓ Application started successfully!"
