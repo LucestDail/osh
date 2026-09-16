@@ -1,6 +1,7 @@
 package com.project.osh.controller;
 
 import java.time.Duration;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,11 +9,13 @@ import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.google.gson.JsonObject;
 import com.project.osh.service.DashboardSinks;
+import com.project.osh.util.NewsKeywordFilter;
 
 import reactor.core.publisher.Flux;
 
@@ -46,13 +49,26 @@ public class DashboardController {
      * type \ubcc4 \ub514\uc2a4\ud328\uce58.
      */
     @GetMapping(value = "/main/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<ServerSentEvent<String>> getMainStream() {
+    public Flux<ServerSentEvent<String>> getMainStream(
+            @RequestParam(name = "newsKeywords", required = false) String newsKeywords) {
+
+        // 구독 시점에 1회만 파싱. sinks.*Stream() 은 구독자마다 새 Flux 라 이 목록은 이 연결 전용이다.
+        List<String> keywords = NewsKeywordFilter.parse(newsKeywords);
+        if (keywords.isEmpty()) {
+            // "검사 안 함"과 "통과"를 구분해 남긴다.
+            log.debug("[main/stream] 뉴스 키워드 없음 — 전체 전송");
+        } else {
+            log.info("[main/stream] 뉴스 키워드 필터 {}건 적용 — {}", keywords.size(), keywords);
+        }
+
         Flux<ServerSentEvent<String>> dashboard = sinks.dashboardStream().map(o -> typedSse("dashboard", o));
         Flux<ServerSentEvent<String>> weather   = sinks.weatherStream()  .map(o -> typedSse("weather", o));
         Flux<ServerSentEvent<String>> air       = sinks.airStream()      .map(o -> typedSse("air", o));
         Flux<ServerSentEvent<String>> emergency = sinks.emergencyStream().map(o -> typedSse("emergency", o));
         Flux<ServerSentEvent<String>> traffic   = sinks.trafficStream()  .map(o -> typedSse("traffic", o));
-        Flux<ServerSentEvent<String>> yeonhap   = sinks.yeonhapStream()  .map(o -> typedSse("yeonhap", o));
+        Flux<ServerSentEvent<String>> yeonhap   = sinks.yeonhapStream()
+                .map(o -> NewsKeywordFilter.filterYeonhapWrapper(o, keywords))
+                .map(o -> typedSse("yeonhap", o));
 
         Flux<ServerSentEvent<String>> heartbeat = Flux.interval(HEARTBEAT_INTERVAL)
                 .map(t -> ServerSentEvent.<String>builder().comment("keep-alive").build());

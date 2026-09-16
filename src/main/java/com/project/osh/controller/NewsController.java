@@ -3,6 +3,7 @@ package com.project.osh.controller;
 import com.project.osh.model.News;
 import com.project.osh.service.NewsService;
 import com.project.osh.service.EventEmitterService;
+import com.project.osh.util.NewsKeywordFilter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -22,12 +23,26 @@ public class NewsController {
     @Autowired
     private EventEmitterService eventEmitterService;
 
+    /**
+     * 뉴스 SSE 스트림.
+     *
+     * @param keywords 관심 키워드(쉼표 구분). 주지 않으면 <b>전부</b> 내려보낸다 —
+     *                 키워드를 정하지 않은 사람에게 빈 스트림을 주면 제품이 망가진다.
+     *                 필터링은 구독자별로 <b>서버에서</b> 한다(구독자가 늘어도 대역폭이 관심사에 비례).
+     */
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamNews() {
-        SseEmitter emitter = eventEmitterService.createEmitter();
+    public SseEmitter streamNews(@RequestParam(name = "keywords", required = false) String keywords) {
+        List<String> parsed = NewsKeywordFilter.parse(keywords);
+        if (parsed.isEmpty()) {
+            // "검사 안 함"과 "통과"를 구분해 남긴다.
+            log.debug("[news/stream] 키워드 없음 — 전체 전송");
+        } else {
+            log.info("[news/stream] 키워드 필터 {}건 적용 — {}", parsed.size(), parsed);
+        }
+        SseEmitter emitter = eventEmitterService.createEmitter(parsed);
 
         try {
-            List<News> news = newsService.getAllNews();
+            List<News> news = NewsKeywordFilter.filterNews(newsService.getAllNews(), parsed);
             if (news != null && !news.isEmpty()) {
                 emitter.send(news, MediaType.APPLICATION_JSON);
             } else {
