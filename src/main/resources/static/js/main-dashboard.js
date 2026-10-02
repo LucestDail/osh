@@ -55,11 +55,13 @@
         });
     }
 
-    /* ===== AI 브리핑 ===== */
+    /* ===== AI 브리핑 (타임라인 카드 하단 접이식, D2) ===== */
     function bindSplitBriefing() {
         const ids = ['Weather', 'Air', 'Emergency', 'Traffic', 'News'];
         const keys = ['weather', 'air', 'emergency', 'traffic', 'news'];
         const updated = document.getElementById('splitUpdated');
+        const fold = document.getElementById('briefingFold');
+        const FOLD_KEY = 'osh.briefing.open';
 
         function paint(state) {
             ids.forEach(function (id) {
@@ -86,6 +88,16 @@
             return !data || data.news === '요약 생성 실패';
         }
 
+        // osh.briefing.enabled=false(토큰 비용 통제)일 때는 같은 "일시 중지" 문장을
+        // 5카드에 복사하지 않고 한 줄로 끝낸다 — 서버가 X-Briefing-Paused 헤더로 알려준다.
+        function renderPaused() {
+            const body = document.getElementById('briefingFoldBody');
+            if (body) {
+                body.innerHTML = '<div class="briefing-fold__paused">AI 브리핑이 일시 중지되어 있습니다 (토큰 비용 관리, <code>osh.briefing.enabled=false</code>). 다시 켜려면 서버 설정값을 바꾸고 재기동해야 합니다.</div>';
+            }
+            if (updated) { updated.textContent = '일시 중지'; updated.title = '토큰 비용 통제를 위해 관리자가 꺼둔 상태'; }
+        }
+
         function refresh(userAccess, retryLeft) {
             retryLeft = retryLeft || 0;
             const icon = document.getElementById('splitRefreshIcon');
@@ -100,6 +112,11 @@
                 .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json().then(function (data) { return { data: data, res: r }; }); })
                 .then(function (wrap) {
                     var data = wrap.data;
+                    if (wrap.res.headers.get('X-Briefing-Paused') === 'true') {
+                        renderPaused();
+                        if (icon) icon.classList.remove('is-spinning');
+                        return;
+                    }
                     if (isBriefingFailed(data) && retryLeft < 2) {
                         setTimeout(function () { refresh(true, retryLeft + 1); }, 3000 * (retryLeft + 1));
                         return;
@@ -123,8 +140,46 @@
                 });
         }
         const btn = document.getElementById('splitRefreshBtn');
-        if (btn) btn.addEventListener('click', function () { refresh(true, 0); });
+        if (btn) btn.addEventListener('click', function (e) { e.stopPropagation(); refresh(true, 0); });
+
+        // 접이식 토글 — 펼침 여부를 기억한다.
+        const toggleEl = document.getElementById('briefingFoldToggle');
+        if (toggleEl && fold) {
+            let open = false;
+            try { open = localStorage.getItem(FOLD_KEY) === '1'; } catch (e) { /* noop */ }
+            fold.classList.toggle('is-open', open);
+            toggleEl.addEventListener('click', function () {
+                const next = !fold.classList.contains('is-open');
+                fold.classList.toggle('is-open', next);
+                try { localStorage.setItem(FOLD_KEY, next ? '1' : '0'); } catch (e) { /* noop */ }
+            });
+        }
+
         refresh(true, 0);
+    }
+
+    /* ===== 시스템 지표 팝오버 (D4) ===== */
+    function bindSysPopover() {
+        const btn = document.getElementById('sysPopoverBtn');
+        const pop = document.getElementById('sysPopover');
+        if (!btn || !pop) return;
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            pop.classList.toggle('is-open');
+        });
+        document.addEventListener('click', function (e) {
+            if (pop.classList.contains('is-open') && !pop.contains(e.target) && e.target !== btn) {
+                pop.classList.remove('is-open');
+            }
+        });
+        // MEM 사용률이 80% 넘으면(application.js의 is-warn 기준과 동일) 버튼에 점을 띄운다.
+        const fill = document.getElementById('memBarFill');
+        if (fill) {
+            const mo = new MutationObserver(function () {
+                btn.classList.toggle('has-warn', fill.classList.contains('is-warn'));
+            });
+            mo.observe(fill, { attributes: true, attributeFilter: ['class'] });
+        }
     }
 
     /* ===== 지도 전체화면 ===== */
@@ -161,22 +216,30 @@
                 weather: safeCall(function (data) {
                     window.OSH.weather && window.OSH.weather.render(data);
                     window.OSH.map     && window.OSH.map.renderWeather(data);
+                    window.OSH.summary && window.OSH.summary.onWeather(data);
                 }),
                 emergency: safeCall(function (data) {
                     window.OSH.emergency && window.OSH.emergency.render(data);
                     window.OSH.map       && window.OSH.map.renderEmergency(data);
+                    window.OSH.summary   && window.OSH.summary.onEmergency(data);
+                    window.OSH.timeline  && window.OSH.timeline.onEmergency(data);
                 }),
                 traffic: safeCall(function (data) {
                     window.OSH.traffic && window.OSH.traffic.render(data);
                     window.OSH.map     && window.OSH.map.renderTraffic(data);
+                    window.OSH.summary  && window.OSH.summary.onTraffic(data);
+                    window.OSH.timeline && window.OSH.timeline.onTraffic(data);
                 }),
                 yeonhap: safeCall(function (data) {
                     window.OSH.news && window.OSH.news.render(data);
                     window.OSH.map  && window.OSH.map.renderNews(data);
+                    window.OSH.summary  && window.OSH.summary.onNews(data);
+                    window.OSH.timeline && window.OSH.timeline.onNews(data);
                 }),
                 air: safeCall(function (data) {
                     if (!window.OSH.air) return;
                     window.OSH.air.render(data);
+                    window.OSH.summary && window.OSH.summary.onAir(data);
                     if (window.OSH.map) {
                         if (window.OSH.air.gradesByCity) {
                             window.OSH.map.setAirGrades(window.OSH.air.gradesByCity());
@@ -191,6 +254,7 @@
         });
 
         bindSplitBriefing();
+        bindSysPopover();
     }
 
     if (document.readyState === 'loading') {

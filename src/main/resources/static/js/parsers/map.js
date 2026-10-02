@@ -19,9 +19,11 @@
     const H = window.OSH.helpers;
     const CTX = window.CTX || '/';
 
-    const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-    const TILE_DARK  = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-    const TILE_ATTR  = '© OpenStreetMap © CARTO';
+    // CARTO의 light_all/dark_all이 무키 사용에 "API KEY REQUIRED" 워터마크를 찍기 시작해서
+    // 키가 아예 필요 없는 OSM 표준 타일로 교체했다(2026-10). 다크 테마는 별도 다크 타일 서버
+    // 없이 .leaflet-tile-pane 에 CSS invert 필터를 걸어 흉내 낸다(dashboard.css 참고).
+    const TILE_LIGHT = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const TILE_ATTR  = '© OpenStreetMap contributors';
 
     let map = null;
     let tileLayer = null;
@@ -267,10 +269,11 @@
     function applyTile() {
         if (!map) return;
         if (tileLayer) { try { map.removeLayer(tileLayer); } catch (e) { /* noop */ } }
-        tileLayer = L.tileLayer(isDark() ? TILE_DARK : TILE_LIGHT, {
+        tileLayer = L.tileLayer(TILE_LIGHT, {
             attribution: TILE_ATTR,
-            subdomains: 'abcd',
-            maxZoom: 18
+            subdomains: 'abc',
+            maxZoom: 19,
+            className: isDark() ? 'osh-tile-dark' : ''
         }).addTo(map);
         // 레이어 순서: tile → choropleth → city → emergency → traffic → news
         if (choroplethLayer) {
@@ -418,11 +421,18 @@
 
     /* ========== 온도 범례 ========== */
 
+    // 기본은 접힌 🌡 버튼 — 펼친 230px 박스가 좌하단(전라·경남이 지나는 자리)을 상시 가리던
+    // 문제를 없앤다. 펼침 여부는 localStorage에 기억(지도를 새로고침해도 유지).
+    const LEGEND_KEY = 'osh.legend.open';
+
     function buildLegend() {
         if (!map) return;
+        let open = false;
+        try { open = localStorage.getItem(LEGEND_KEY) === '1'; } catch (e) { /* noop */ }
+
         const legend = L.control({ position: 'bottomleft' });
         legend.onAdd = function () {
-            const div = L.DomUtil.create('div', 'osh-legend');
+            const div = L.DomUtil.create('div', 'osh-legend' + (open ? ' is-open' : ''));
             const bands = [
                 ['#4575b4', '0°C 이하'],
                 ['#74add1', '0 – 5°C'],
@@ -434,13 +444,23 @@
                 ['#d73027', '30°C 이상']
             ];
             div.innerHTML =
-                '<div class="osh-legend__title">🌡 기온</div>' +
+                '<button type="button" class="osh-legend__toggle">🌡 기온 범례</button>' +
+                '<div class="osh-legend__body">' +
                 bands.map(function (b) {
                     return '<div class="osh-legend__row">' +
                         '<i style="background:' + b[0] + '"></i>' +
                         '<span>' + b[1] + '</span>' +
                         '</div>';
-                }).join('');
+                }).join('') +
+                '</div>';
+            const toggle = div.querySelector('.osh-legend__toggle');
+            L.DomEvent.on(toggle, 'click', function (e) {
+                L.DomEvent.stopPropagation(e);
+                L.DomEvent.preventDefault(e);
+                const next = !div.classList.contains('is-open');
+                div.classList.toggle('is-open', next);
+                try { localStorage.setItem(LEGEND_KEY, next ? '1' : '0'); } catch (err) { /* noop */ }
+            });
             return div;
         };
         legend.addTo(map);
@@ -688,7 +708,8 @@
         _userMarker.on('popupopen', function () {
             _userMarker.getPopup().setContent(buildUserPopupHtml(lat, lon, sourceLabel));
         });
-        _userMarker.bindPopup(buildUserPopupHtml(lat, lon, sourceLabel), { maxWidth: 240 });
+        // autoPanPadding — 자동 오픈 시 좌상단 줌/위치 컨트롤에 안 가리도록 여유를 둔다.
+        _userMarker.bindPopup(buildUserPopupHtml(lat, lon, sourceLabel), { maxWidth: 240, autoPanPadding: [56, 56] });
         _userMarker.addTo(map);
         _userMarker.openPopup();
         if (_locBtn) { _locBtn.innerHTML = '<span class="osh-loc-btn__icon">📍</span>'; _locBtn.classList.remove('is-loading'); }

@@ -36,6 +36,7 @@ public class GeminiController {
             headers.set("X-Briefing-Cached", String.valueOf(result.fromCache()));
             headers.set("X-Briefing-Generated-At", briefingCache.formatCachedAt(result.generatedAtMs()));
             headers.set("X-Briefing-User-Access", String.valueOf(result.userAccess()));
+            headers.set("X-Briefing-Paused", String.valueOf(result.paused()));
             return ResponseEntity.ok().headers(headers).body(result.json());
         } catch (Exception e) {
             log.error("Error generating split summary", e);

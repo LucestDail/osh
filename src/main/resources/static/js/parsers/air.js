@@ -65,12 +65,48 @@
                 '</div>';
     }
 
+    let sortMode = 'grade'; // grade(나쁨순) | name(가나다)
+
+    function applySort(items) {
+        const sorted = items.slice();
+        if (sortMode === 'name') {
+            sorted.sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'ko'); });
+        } else {
+            sorted.sort(function (a, b) { return (Number(b.khaiGrade) || 0) - (Number(a.khaiGrade) || 0); });
+        }
+        return sorted;
+    }
+
+    function ensureSortbar(host) {
+        if (!host || !host.parentElement) return;
+        let bar = host.parentElement.querySelector('.sortbar[data-for="air"]');
+        if (bar) return;
+        bar = document.createElement('div');
+        bar.className = 'sortbar';
+        bar.setAttribute('data-for', 'air');
+        bar.innerHTML =
+            '정렬 ' +
+            '<button type="button" data-sort="grade" class="is-active">나쁨순</button>' +
+            '<button type="button" data-sort="name">가나다</button>';
+        host.parentElement.insertBefore(bar, host);
+        bar.addEventListener('click', function (e) {
+            const btn = e.target.closest('button[data-sort]');
+            if (!btn) return;
+            sortMode = btn.getAttribute('data-sort');
+            bar.querySelectorAll('button').forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+            // redraw()는 마지막 update()의 순서를 그대로 쓰므로, 버튼 클릭 시점에 즉시
+            // 재정렬하려면 update()로 다시 밀어 넣어야 한다(다음 SSE까지 기다리지 않도록).
+            pager.update(applySort(pager.getItems()));
+        });
+    }
+
     const pager = window.OSH.pager.create({
         name: 'air',
         pageSize: 18,   // AirKorea 시도 17개 → 한 페이지에 다 보이게
         onRender: function (slice) {
             const host = document.getElementById('airGrid');
             if (!host) return;
+            ensureSortbar(host);
             if (!slice.length) {
                 host.innerHTML = '<div class="empty-state"><div class="empty-state__title">대기질 정보를 불러오는 중입니다</div></div>';
                 return;
@@ -89,9 +125,7 @@
             latestBySido[it.name] = { grade: it.khaiGrade, pm10: it.pm10, pm25: it.pm25 };
         });
 
-        // 나쁜 등급 우선
-        items.sort(function (a, b) { return (Number(b.khaiGrade) || 0) - (Number(a.khaiGrade) || 0); });
-        pager.update(items);
+        pager.update(applySort(items));
     }
 
     (window.OSH = window.OSH || {}).air = {

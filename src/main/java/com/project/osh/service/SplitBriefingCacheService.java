@@ -48,7 +48,7 @@ public class SplitBriefingCacheService {
         }
     }
 
-    public record SplitBriefingResult(String json, long generatedAtMs, boolean fromCache, boolean userAccess) {}
+    public record SplitBriefingResult(String json, long generatedAtMs, boolean fromCache, boolean userAccess, boolean paused) {}
 
     /**
      * @param userAccess true 이면 접근 기록 후 무조건 신규 생성
@@ -56,21 +56,23 @@ public class SplitBriefingCacheService {
     public SplitBriefingResult get(boolean userAccess) {
         if (!enabled) {
             // 기능 OFF — Gemini 호출 없이 일시 중지 안내만 반환(토큰 미소비).
-            return new SplitBriefingResult(pausedJson(), 0L, true, userAccess);
+            // paused=true 를 응답 헤더로 알려서, 프런트가 같은 문장을 5번 반복하지 않고
+            // "일시 중지" 한 줄로 접어 보여줄 수 있게 한다.
+            return new SplitBriefingResult(pausedJson(), 0L, true, userAccess, true);
         }
         if (userAccess) {
             accessCount.incrementAndGet();
             lastAccessAtMs.set(System.currentTimeMillis());
             log.info("AI 브리핑 사용자 접근 (누적 {}회) — 신규 생성", accessCount.get());
-            return new SplitBriefingResult(regenerateLocked("user-access"), cachedAtMs, false, true);
+            return new SplitBriefingResult(regenerateLocked("user-access"), cachedAtMs, false, true, false);
         }
 
         synchronized (lock) {
             if (isCacheValid()) {
-                return new SplitBriefingResult(cachedJson, cachedAtMs, true, false);
+                return new SplitBriefingResult(cachedJson, cachedAtMs, true, false, false);
             }
         }
-        return new SplitBriefingResult(regenerateLocked("cache-miss"), cachedAtMs, false, false);
+        return new SplitBriefingResult(regenerateLocked("cache-miss"), cachedAtMs, false, false, false);
     }
 
     /** 1시간 스케줄용 — 접근 기록이 있을 때만 백그라운드 갱신 */

@@ -42,31 +42,41 @@
         <div class="app-navbar__title">실시간 안전 운영 대시보드</div>
         <div class="app-navbar__actions">
             <div class="page__clock"><span aria-hidden="true">⏱</span><span id="currentTime">--:--:--</span></div>
+            <!-- 서버 자기 지표(OS/ARCH/LOAD/MEM) — 예전엔 상단 전폭 한 줄을 차지했지만
+                 관제 대상이 아니라 서버 자신의 상태라 ⚙ 팝오버 뒤로 옮겼다(D4). -->
+            <div class="sys-popover-wrap">
+                <button class="sys-popover-btn" type="button" id="sysPopoverBtn" aria-haspopup="true">
+                    ⚙ 시스템<span class="sys-popover-btn__dot" id="sysPopoverDot"></span>
+                </button>
+                <div class="sys-popover" id="sysPopover">
+                    <div class="sys-popover__title">서버 자기 지표</div>
+                    <div class="sys-popover__row"><span class="sys-popover__label">OS</span><span class="sys-popover__val" id="systemName">-</span></div>
+                    <div class="sys-popover__row"><span class="sys-popover__label">ARCH</span><span class="sys-popover__val" id="systemArchitecture">-</span></div>
+                    <div class="sys-popover__row"><span class="sys-popover__label">LOAD</span><span class="sys-popover__val" id="systemLoad">-</span></div>
+                    <div class="sys-popover__row">
+                        <span class="sys-popover__label">MEM</span>
+                        <span class="status-bar__bar"><span class="status-bar__bar-fill" id="memBarFill"></span></span>
+                        <span class="sys-popover__val" id="memText">- / -</span>
+                    </div>
+                </div>
+            </div>
             <button class="theme-toggle" type="button" data-theme-toggle aria-label="다크/라이트 모드 전환"></button>
         </div>
     </div>
 </nav>
 
-<!-- 서버 지표 status bar (헤더 바로 아래, 한 줄) -->
+<!-- 상황 요약 띠 — "지금 이상이 있는가"에 화면 진입 1초 안에 답한다(D3).
+     숫자는 전부 이미 도착한 SSE 페이로드에서 센다(새 API 없음, summary.js). -->
 <div class="status-bar" id="statusBar">
-    <div class="status-bar__inner">
-        <span class="status-bar__item" title="OS">
-            <span class="status-bar__label">OS</span>
-            <span class="status-bar__val" id="systemName">-</span>
-        </span>
-        <span class="status-bar__item" title="아키텍처">
-            <span class="status-bar__label">ARCH</span>
-            <span class="status-bar__val" id="systemArchitecture">-</span>
-        </span>
-        <span class="status-bar__item" title="시스템 평균 부하">
-            <span class="status-bar__label">LOAD</span>
-            <span class="status-bar__val" id="systemLoad">-</span>
-        </span>
-        <span class="status-bar__item status-bar__item--bar" title="JVM 메모리">
-            <span class="status-bar__label">MEM</span>
-            <span class="status-bar__bar"><span class="status-bar__bar-fill" id="memBarFill"></span></span>
-            <span class="status-bar__val" id="memText">- / -</span>
-        </span>
+    <div class="status-bar__inner status-bar__inner--summary">
+        <div class="summary-chip" id="sumEmergency"><span class="summary-chip__k">재난문자 · 1h</span><span class="summary-chip__v">-</span><span class="summary-chip__s">대기 중</span></div>
+        <div class="summary-chip" id="sumAir"><span class="summary-chip__k">대기질 나쁨 이상</span><span class="summary-chip__v">-</span><span class="summary-chip__s">대기 중</span></div>
+        <div class="summary-chip" id="sumTraffic"><span class="summary-chip__k">교통 돌발</span><span class="summary-chip__v">-</span><span class="summary-chip__s">대기 중</span></div>
+        <div class="summary-chip" id="sumTemp"><span class="summary-chip__k">기온 폭</span><span class="summary-chip__v">-</span><span class="summary-chip__s">대기 중</span></div>
+        <div class="summary-chip summary-chip--ok" id="sumFreshnessWrap" title="소스별 마지막 수신 경과 — 연결은 됐는데 특정 소스만 조용히 안 올 때를 드러낸다">
+            <span class="summary-chip__k">수신</span>
+            <span class="summary-chip__s" id="sumFreshness">대기 중</span>
+        </div>
     </div>
 </div>
 
@@ -89,24 +99,43 @@
             </div>
         </article>
 
-        <!-- (2) AI 한줄 브리핑 -->
+        <!-- (2) 상황 타임라인 (신규) — 재난·교통·뉴스를 시간순 한 스트림으로.
+             AI 한줄 브리핑은 하단에 접이식으로 내려서 같이 담는다(D2가 비운 자리). -->
         <article class="card card--fixed">
             <header class="card__header">
                 <h2 class="card__title">
-                    <span class="card__icon">🤖</span>AI 한줄 브리핑
+                    <span class="card__icon">⏱</span>상황 타임라인
                 </h2>
-                <div class="card__header-aux">
-                    <span class="badge" id="splitUpdated">대기 중</span>
-                    <button class="btn btn--ghost btn--sm" type="button" id="splitRefreshBtn" title="AI 브리핑 새로고침"><span class="btn__icon" id="splitRefreshIcon" aria-hidden="true">↻</span></button>
+                <div class="tl-filters" id="timelineFilters">
+                    <button type="button" data-filter="all" class="is-active">전체</button>
+                    <button type="button" data-filter="emergency">재난</button>
+                    <button type="button" data-filter="traffic">교통</button>
+                    <button type="button" data-filter="news">뉴스</button>
                 </div>
             </header>
-            <div class="card__body">
-                <div class="split-list">
-                    <div class="split-row"><span class="split-row__tag">☁ 날씨</span><span class="split-row__text" id="splitWeather">불러오는 중…</span></div>
-                    <div class="split-row"><span class="split-row__tag">💨 대기질</span><span class="split-row__text" id="splitAir">불러오는 중…</span></div>
-                    <div class="split-row"><span class="split-row__tag">⚠ 재난</span><span class="split-row__text" id="splitEmergency">불러오는 중…</span></div>
-                    <div class="split-row"><span class="split-row__tag">🚧 교통</span><span class="split-row__text" id="splitTraffic">불러오는 중…</span></div>
-                    <div class="split-row"><span class="split-row__tag">📰 뉴스</span><span class="split-row__text" id="splitNews">불러오는 중…</span></div>
+            <div class="card__body card__body--flush" style="display:flex; flex-direction:column; min-height:0;">
+                <div class="info-panel__content" style="flex:1;">
+                    <div class="tl-list" id="timelineList">
+                        <div class="empty-state"><div class="empty-state__title">상황을 불러오는 중입니다</div></div>
+                    </div>
+                </div>
+
+                <div class="briefing-fold" id="briefingFold">
+                    <div class="briefing-fold__h" id="briefingFoldToggle">
+                        <span class="briefing-fold__caret" aria-hidden="true">▸</span>
+                        <b>🤖 AI 한줄 브리핑</b>
+                        <span class="right" id="splitUpdated">대기 중</span>
+                        <button class="btn btn--ghost btn--sm" type="button" id="splitRefreshBtn" title="AI 브리핑 새로고침"><span class="btn__icon" id="splitRefreshIcon" aria-hidden="true">↻</span></button>
+                    </div>
+                    <div class="briefing-fold__b" id="briefingFoldBody">
+                        <div class="split-list">
+                            <div class="split-row"><span class="split-row__tag">☁ 날씨</span><span class="split-row__text" id="splitWeather">불러오는 중…</span></div>
+                            <div class="split-row"><span class="split-row__tag">💨 대기질</span><span class="split-row__text" id="splitAir">불러오는 중…</span></div>
+                            <div class="split-row"><span class="split-row__tag">⚠ 재난</span><span class="split-row__text" id="splitEmergency">불러오는 중…</span></div>
+                            <div class="split-row"><span class="split-row__tag">🚧 교통</span><span class="split-row__text" id="splitTraffic">불러오는 중…</span></div>
+                            <div class="split-row"><span class="split-row__tag">📰 뉴스</span><span class="split-row__text" id="splitNews">불러오는 중…</span></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </article>
@@ -234,6 +263,8 @@
 <script th:src="@{/js/parsers/news.js(v=${staticVersion})}"        src="/js/parsers/news.js"></script>
 <script th:src="@{/js/parsers/air.js(v=${staticVersion})}"         src="/js/parsers/air.js"></script>
 <script th:src="@{/js/parsers/map.js(v=${staticVersion})}"         src="/js/parsers/map.js"></script>
+<script th:src="@{/js/parsers/summary.js(v=${staticVersion})}"     src="/js/parsers/summary.js"></script>
+<script th:src="@{/js/parsers/timeline.js(v=${staticVersion})}"    src="/js/parsers/timeline.js"></script>
 
 <!-- entry -->
 <script th:src="@{/js/main-dashboard.js(v=${staticVersion})}" src="/js/main-dashboard.js"></script>
