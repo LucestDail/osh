@@ -20,10 +20,16 @@
     const CTX = window.CTX || '/';
 
     // CARTO의 light_all/dark_all이 무키 사용에 "API KEY REQUIRED" 워터마크를 찍기 시작해서
-    // 키가 아예 필요 없는 OSM 표준 타일로 교체했다(2026-10). 다크 테마는 별도 다크 타일 서버
-    // 없이 .leaflet-tile-pane 에 CSS invert 필터를 걸어 흉내 낸다(dashboard.css 참고).
-    const TILE_LIGHT = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-    const TILE_ATTR  = '© OpenStreetMap contributors';
+    // 교체했다(2026-10). OSM 표준 타일을 잠깐 썼지만 범용 지도라 녹지·도로 채도가 높아
+    // 그 위에 얹는 마커/코로플레스와 색이 싸웠고, 다크는 invert 필터를 거는 바람에
+    // 한반도가 형광 녹색이 됐다. Esri 회색 캔버스는 키가 필요 없고 애초에 데이터 위에
+    // 깔라고 만든 저채도 베이스맵이라 다크 전용본까지 있다 — 필터 해킹을 걷어낸다.
+    // 주의: Esri 타일 경로는 {z}/{y}/{x} 순서다(OSM과 x·y가 뒤집혀 있다).
+    const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
+    const TILE_LIGHT = ESRI + 'World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+    const TILE_DARK  = ESRI + 'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+    const TILE_ATTR  = '© Esri · © OpenStreetMap contributors';
+    const TILE_MAX_NATIVE = 16;   // 회색 캔버스는 z16까지만 타일이 있다
 
     let map = null;
     let tileLayer = null;
@@ -269,11 +275,10 @@
     function applyTile() {
         if (!map) return;
         if (tileLayer) { try { map.removeLayer(tileLayer); } catch (e) { /* noop */ } }
-        tileLayer = L.tileLayer(TILE_LIGHT, {
+        tileLayer = L.tileLayer(isDark() ? TILE_DARK : TILE_LIGHT, {
             attribution: TILE_ATTR,
-            subdomains: 'abc',
             maxZoom: 19,
-            className: isDark() ? 'osh-tile-dark' : ''
+            maxNativeZoom: TILE_MAX_NATIVE
         }).addTo(map);
         // 레이어 순서: tile → choropleth → city → emergency → traffic → news
         if (choroplethLayer) {
@@ -304,16 +309,9 @@
 
     /* ========== 온도 색상 ========== */
 
+    // 밴드 경계는 helpers.tempBandColor 한 곳에만 둔다(범례·날씨 목록과 공유).
     function tempToFillColor(tempC) {
-        if (tempC == null || isNaN(tempC)) return isDark() ? '#2a2a2a' : '#ddd';
-        if (tempC <= 0)   return '#4575b4';
-        if (tempC <= 5)   return '#74add1';
-        if (tempC <= 10)  return '#abd9e9';
-        if (tempC <= 15)  return '#e0f3f8';
-        if (tempC <= 20)  return '#a8d990';
-        if (tempC <= 25)  return '#fee090';
-        if (tempC <= 30)  return '#fdae61';
-        return '#d73027';
+        return H.tempBandColor(tempC) || (isDark() ? '#2a2a2a' : '#ddd');
     }
 
     function getProvinceTempC(name) {

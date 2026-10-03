@@ -38,7 +38,7 @@
             return {
                 ts: d ? d.getTime() : 0,
                 type: 'emergency',
-                icon: '⚠',
+                variant: variant,
                 tagCls: 'tl-tag--' + variant,
                 tagLabel: it.EMRG_STEP_NM || '안내',
                 html: '<b>' + H.esc((it.RCPTN_RGN_NM || '-').trim()) + '</b> ' + H.esc(H.truncate(it.MSG_CN || '-', 70))
@@ -56,7 +56,7 @@
             return {
                 ts: d ? d.getTime() : 0,
                 type: 'traffic',
-                icon: '🚧',
+                variant: 'warning',
                 tagCls: 'tl-tag--warning',
                 tagLabel: it.eventType || '돌발',
                 html: '<b>' + H.esc(road) + '</b> ' + H.esc(H.truncate(it.message || '-', 70))
@@ -73,7 +73,7 @@
             return {
                 ts: d ? d.getTime() : 0,
                 type: 'news',
-                icon: '📰',
+                variant: 'info',
                 tagCls: 'tl-tag--info',
                 tagLabel: '뉴스',
                 html: '<b>' + H.esc(H.truncate(it.title || '-', 70)) + '</b>'
@@ -104,9 +104,11 @@
         host.innerHTML = list.map(function (it) {
             const isNew = _ready && it.ts > _maxSeenTs;
             const d = new Date(it.ts);
-            return '<div class="tl-row' + (isNew ? ' is-new' : '') + '">' +
+            // 아이콘 칸(⚠/🚧/📰)을 없앴다 — 바로 옆 태그가 같은 말을 하고 있었고,
+            // 이모지마다 폭·색이 달라 줄이 들쭉날쭉했다. 심각도는 왼쪽 레일로만 말한다.
+            return '<div class="tl-row tl-row--' + it.variant + (isNew ? ' is-new' : '') + '">' +
+                '<span class="tl-row__rail" aria-hidden="true"></span>' +
                 '<span class="tl-row__t">' + timeHm(d) + '</span>' +
-                '<span class="tl-row__i">' + it.icon + '</span>' +
                 '<span class="tl-row__x"><span class="tl-tag ' + it.tagCls + '">' + H.esc(it.tagLabel) + '</span>' + it.html + '</span>' +
                 '</div>';
         }).join('');

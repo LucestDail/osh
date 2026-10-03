@@ -100,6 +100,34 @@
                '</td></tr>';
     }
 
+    /**
+     * 기온(℃) → 밴드 색. 지도 코로플레스·범례·날씨 목록이 같은 색을 써야
+     * "지도에서 빨간 곳 = 목록에서 빨간 줄"이 성립한다 — 세 곳에 따로 적으면 언젠가 어긋난다.
+     */
+    function tempBandColor(tempC) {
+        const c = Number(tempC);
+        if (tempC == null || !isFinite(c)) return null;
+        if (c <= 0)  return '#4575b4';
+        if (c <= 5)  return '#74add1';
+        if (c <= 10) return '#abd9e9';
+        if (c <= 15) return '#e0f3f8';
+        if (c <= 20) return '#a8d990';
+        if (c <= 25) return '#fee090';
+        if (c <= 30) return '#fdae61';
+        return '#d73027';
+    }
+
+    /** OWM 영문 상태 → 한국어. 목록에 "맑음"과 "clear sky"가 같이 뜨던 중복을 없앤다. */
+    const WX_KO = {
+        Clear: '맑음', Clouds: '구름', Rain: '비', Drizzle: '이슬비', Snow: '눈',
+        Thunderstorm: '뇌우', Mist: '안개', Fog: '안개', Haze: '연무',
+        Dust: '황사', Sand: '황사', Smoke: '연무', Squall: '돌풍', Tornado: '토네이도'
+    };
+    function wxKo(main, fallback) {
+        if (main && WX_KO[main]) return WX_KO[main];
+        return fallback || '-';
+    }
+
     /** 문자열 truncate */
     function truncate(str, max) {
         if (!str) return '-';
@@ -107,5 +135,5 @@
         return s.length > max ? s.substring(0, max) + '…' : s;
     }
 
-    OSH.helpers = { safeParse, unwrap, parseToDate, formatDateTime, formatHm, kToC, esc, emptyRowHtml, truncate };
+    OSH.helpers = { safeParse, unwrap, parseToDate, formatDateTime, formatHm, kToC, esc, emptyRowHtml, truncate, tempBandColor, wxKo };
 })();

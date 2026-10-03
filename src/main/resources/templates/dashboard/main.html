@@ -69,13 +69,13 @@
      숫자는 전부 이미 도착한 SSE 페이로드에서 센다(새 API 없음, summary.js). -->
 <div class="status-bar" id="statusBar">
     <div class="status-bar__inner status-bar__inner--summary">
-        <div class="summary-chip" id="sumEmergency"><span class="summary-chip__k">재난문자 · 1h</span><span class="summary-chip__v">-</span><span class="summary-chip__s">대기 중</span></div>
-        <div class="summary-chip" id="sumAir"><span class="summary-chip__k">대기질 나쁨 이상</span><span class="summary-chip__v">-</span><span class="summary-chip__s">대기 중</span></div>
-        <div class="summary-chip" id="sumTraffic"><span class="summary-chip__k">교통 돌발</span><span class="summary-chip__v">-</span><span class="summary-chip__s">대기 중</span></div>
-        <div class="summary-chip" id="sumTemp"><span class="summary-chip__k">기온 폭</span><span class="summary-chip__v">-</span><span class="summary-chip__s">대기 중</span></div>
-        <div class="summary-chip summary-chip--ok" id="sumFreshnessWrap" title="소스별 마지막 수신 경과 — 연결은 됐는데 특정 소스만 조용히 안 올 때를 드러낸다">
-            <span class="summary-chip__k">수신</span>
-            <span class="summary-chip__s" id="sumFreshness">대기 중</span>
+        <div class="summary-chip" id="sumEmergency"><span class="summary-chip__k">재난문자 · 6시간</span><span class="summary-chip__line"><span class="summary-chip__v">-</span><span class="summary-chip__s">대기 중</span></span></div>
+        <div class="summary-chip" id="sumAir"><span class="summary-chip__k">대기질 나쁨 이상</span><span class="summary-chip__line"><span class="summary-chip__v">-</span><span class="summary-chip__s">대기 중</span></span></div>
+        <div class="summary-chip" id="sumTraffic"><span class="summary-chip__k">교통 돌발</span><span class="summary-chip__line"><span class="summary-chip__v">-</span><span class="summary-chip__s">대기 중</span></span></div>
+        <div class="summary-chip" id="sumTemp"><span class="summary-chip__k">기온 폭</span><span class="summary-chip__line"><span class="summary-chip__v">-</span><span class="summary-chip__s">대기 중</span></span></div>
+        <div class="summary-freshness" id="sumFreshnessWrap" title="소스별 마지막 수신 경과 — 연결은 됐는데 특정 소스만 조용히 안 올 때를 드러낸다">
+            <span class="summary-freshness__k">수신</span>
+            <span class="summary-freshness__list" id="sumFreshness"></span>
         </div>
     </div>
 </div>
@@ -162,21 +162,11 @@
                 <!-- weather -->
                 <section class="info-panel is-active" id="panel-weather" role="tabpanel">
                     <div class="info-panel__content"><div id="weatherGrid" class="weather-grid"></div></div>
-                    <div class="pager" data-pager="weather">
-                        <button class="pager__btn" data-act="prev" aria-label="이전">‹</button>
-                        <span class="pager__label" id="pagerLabel-weather">0 / 0</span>
-                        <button class="pager__btn" data-act="next" aria-label="다음">›</button>
-                    </div>
                 </section>
 
                 <!-- air -->
                 <section class="info-panel" id="panel-air" role="tabpanel" hidden>
                     <div class="info-panel__content"><div id="airGrid" class="air-grid"></div></div>
-                    <div class="pager" data-pager="air">
-                        <button class="pager__btn" data-act="prev" aria-label="이전">‹</button>
-                        <span class="pager__label" id="pagerLabel-air">0 / 0</span>
-                        <button class="pager__btn" data-act="next" aria-label="다음">›</button>
-                    </div>
                 </section>
 
                 <!-- emergency -->

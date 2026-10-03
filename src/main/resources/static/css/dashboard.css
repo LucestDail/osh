@@ -6,7 +6,7 @@
 
 :root {
     --navbar-h: 48px;
-    --status-h: 58px;
+    --status-h: 54px;
     --page-pad-y: 14px;
     /* 양측은 화면이 클수록 더 여유. 작은 화면(<800px)은 16px, 큰 화면은 vw 기준 약 5% */
     --page-pad-x: clamp(16px, 5vw, 80px);
@@ -219,9 +219,6 @@ body { overflow: hidden; } /* 메인 대시보드는 스크롤 없이 화면 안
     color: var(--color-fg-muted) !important;
     border-color: var(--color-border) !important;
 }
-/* 무키 OSM 타일은 다크 전용 서버가 없어 CSS invert로 다크테마를 흉내낸다(map.js applyTile 참고) */
-.osh-tile-dark { filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9); }
-
 /* D7: Leaflet 컨트롤(zIndex 1000)이 팝업(기본 700)보다 위라 자동 오픈 팝업이 가려지고
    글자가 잘렸다 — 팝업 pane을 컨트롤보다 위로 올린다. */
 .leaflet-popup-pane { z-index: 1100; }
@@ -638,32 +635,69 @@ img.osh-cloud-tiles {
  * 접이식 AI 브리핑 / 데이터 패널 정렬바. osh-dashboard-wireframe.html 준용.
  * =========================================================== */
 
-/* === 상황 요약 띠 (옛 JVM 전용 status-bar 자리를 대체) === */
-.status-bar__inner--summary { gap: var(--space-3); padding-block: 8px; }
+/* === 상황 요약 띠 (옛 JVM 전용 status-bar 자리를 대체) ===
+   칩을 flex:1 로 늘리면 1920px 에서 한 칸이 340px 이 되어 "0건" 같은 짧은 숫자가
+   빈 공간에 떠 있게 된다. 내용 너비로 두고 구분선만 세운다. */
+.status-bar__inner--summary { gap: 0; padding-block: 0; align-items: stretch; overflow: visible; }
 .summary-chip {
-    flex: 1; min-width: 108px; display: flex; flex-direction: column; gap: 2px;
-    border: 1px solid var(--color-border); border-radius: var(--radius-1);
-    padding: 5px 10px; background: var(--color-bg-elev); cursor: pointer;
-    transition: border-color var(--t-fast), background var(--t-fast);
+    display: flex; flex-direction: column; justify-content: center; gap: 1px;
+    flex: 0 1 auto; min-width: 0; max-width: 320px;
+    padding: 0 var(--space-5);
+    border-left: 1px solid var(--color-border);
+    background: none; border-radius: 0; cursor: pointer;
+    transition: background var(--t-fast);
 }
-.summary-chip:hover { border-color: var(--color-border-strong); background: var(--color-overlay); }
+.summary-chip:first-child { border-left: 0; padding-left: 0; }
+.summary-chip:hover { background: var(--color-overlay); }
 .summary-chip__k {
-    font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .05em;
-    color: var(--color-fg-muted); text-transform: uppercase; white-space: nowrap;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+    color: var(--color-fg-muted); white-space: nowrap;
 }
-.summary-chip__v { font-size: 14px; font-weight: 700; line-height: 1.2; color: var(--color-fg); font-variant-numeric: tabular-nums; }
+/* 값과 보조설명은 같은 줄 — 세로 3단으로 쌓으면 띠가 두꺼워지고 위계가 평평해진다 */
+.summary-chip__line { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.summary-chip__v {
+    font-size: 17px; font-weight: 700; line-height: 1.2; color: var(--color-fg);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 .summary-chip__s {
-    font-family: var(--font-mono); font-size: 10px; color: var(--color-fg-muted);
+    font-size: 11px; color: var(--color-fg-muted); min-width: 0;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
 }
 .summary-chip--danger  .summary-chip__v { color: var(--color-danger); }
 .summary-chip--warning .summary-chip__v { color: var(--color-warning); }
 .summary-chip--ok      .summary-chip__v { color: var(--color-success); }
+
+/* 수신 상태는 집계가 아니라 계측이라 오른쪽 끝에 따로 세운다 */
+.summary-freshness {
+    margin-left: auto; display: flex; align-items: center; gap: var(--space-4);
+    padding-left: var(--space-5); border-left: 1px solid var(--color-border);
+    cursor: default;
+}
+.summary-freshness__k {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+    color: var(--color-fg-muted); white-space: nowrap;
+}
+.summary-freshness__list { display: flex; align-items: center; gap: var(--space-4); }
+.summary-src { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-size: 11px; }
+.summary-src__label { color: var(--color-fg-muted); }
+.summary-src__age { font-family: var(--font-mono); color: var(--color-fg); font-variant-numeric: tabular-nums; }
+.summary-src--warn .summary-src__age { color: var(--color-warning); }
+.summary-src--bad  .summary-src__age { color: var(--color-danger); font-weight: 600; }
 .summary-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; flex: none; }
 .summary-dot--ok   { background: var(--color-success); }
 .summary-dot--warn { background: var(--color-warning); }
 .summary-dot--bad  { background: var(--color-danger); }
+
+@media (max-width: 1500px) {
+    /* 좁아지면 보조설명부터 버린다 — 숫자는 끝까지 남긴다 */
+    .summary-chip__s { display: none; }
+    .summary-chip { padding: 0 var(--space-4); }
+    .summary-freshness__k { display: none; }
+    .summary-freshness__list { gap: var(--space-3); }
+}
+@media (max-width: 1100px) {
+    .summary-src__label { display: none; }
+}
 
 /* === 시스템 지표 팝오버 (navbar ⚙, D4) === */
 .sys-popover-wrap { position: relative; }
@@ -707,29 +741,43 @@ img.osh-cloud-tiles {
 .tl-filters button.is-active { background: var(--color-primary-soft); color: var(--color-primary); }
 
 .tl-list { display: flex; flex-direction: column; }
+/* 레일(심각도) · 시각 · 본문. 예전엔 여기에 이모지 아이콘 칸이 하나 더 있었는데
+   바로 옆 태그가 같은 말을 하고 있었고(⚠+경계, 🚧+공사), 이모지마다 폭과 색이
+   제각각이라 줄이 들쭉날쭉했다 — 레일 하나로 대체한다. */
 .tl-row {
-    display: grid; grid-template-columns: 44px 16px 1fr; gap: 8px; align-items: start;
-    padding: 7px 2px; border-bottom: 1px dashed var(--color-border);
+    display: grid; grid-template-columns: 3px 42px 1fr;
+    gap: 0 var(--space-3); align-items: stretch;
+    padding: 8px 0; border-bottom: 1px solid var(--color-border);
 }
 .tl-row:last-child { border-bottom: none; }
-.tl-row__t { font-family: var(--font-mono); font-size: 10px; color: var(--color-fg-muted); padding-top: 2px; white-space: nowrap; }
-.tl-row__i { font-size: 12px; line-height: 1.4; }
-.tl-row__x { font-size: var(--fs-xs); color: var(--color-fg-muted); line-height: 1.45; }
+.tl-row__rail { border-radius: 2px; background: var(--color-border-strong); }
+.tl-row--danger  .tl-row__rail { background: var(--color-danger); }
+.tl-row--warning .tl-row__rail { background: var(--color-warning); }
+.tl-row--info    .tl-row__rail { background: var(--color-info); }
+.tl-row__t {
+    font-family: var(--font-mono); font-size: 11px; color: var(--color-fg-muted);
+    white-space: nowrap; font-variant-numeric: tabular-nums; padding-top: 1px;
+}
+.tl-row__x { font-size: var(--fs-xs); color: var(--color-fg-muted); line-height: 1.5; min-width: 0; }
 .tl-row__x b { color: var(--color-fg); font-weight: 600; }
 .tl-tag {
-    font-family: var(--font-mono); font-size: 9px; font-weight: 700; padding: 1px 5px;
-    border-radius: 3px; margin-right: 5px; vertical-align: 1px; display: inline-block;
+    font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px;
+    margin-right: 6px; display: inline-block; vertical-align: 1px; white-space: nowrap;
 }
-.tl-tag--danger  { color: var(--color-danger);  background: rgba(217,76,76,0.14); }
-.tl-tag--warning { color: var(--color-warning); background: rgba(224,160,32,0.15); }
-.tl-tag--info    { color: var(--color-info);    background: rgba(37,150,190,0.13); }
+/* 가장 위험한 단계만 채운 배지로 — 전부 옅은 틴트면 심각도 차이가 안 읽힌다 */
+.tl-tag--danger  { color: #fff; background: var(--color-danger); }
+.tl-tag--warning { color: var(--color-warning); background: rgba(224,160,32,0.16); }
+.tl-tag--info    { color: var(--color-info);    background: rgba(37,150,190,0.14); }
 .tl-tag--muted   { color: var(--color-fg-muted); background: var(--color-overlay); }
+[data-theme="dark"] .tl-tag--warning { background: rgba(240,179,64,0.18); }
+[data-theme="dark"] .tl-tag--info    { background: rgba(76,179,214,0.16); }
 /* 신규 수신 시 짧게 강조(지도 마커 is-new와 같은 언어) */
 .tl-row.is-new { animation: tlRowFlash 1.1s ease 2; }
 @keyframes tlRowFlash {
     0%, 100% { background: transparent; }
     50% { background: var(--color-primary-soft); }
 }
+@media (prefers-reduced-motion: reduce) { .tl-row.is-new { animation: none; } }
 
 /* === 접이식 AI 브리핑 (타임라인 카드 하단, D2) === */
 .briefing-fold { border-top: 1px solid var(--color-border); margin-top: auto; background: var(--color-bg-elev); flex: none; }
@@ -750,28 +798,54 @@ img.osh-cloud-tiles {
 
 /* === 데이터 패널 정렬바 (weather/air 공용, D5·D6) === */
 .sortbar {
-    display: flex; align-items: center; gap: 6px; padding: 6px var(--card-pad) 2px;
-    font-family: var(--font-mono); font-size: 10px; color: var(--color-fg-muted); flex: none;
+    display: flex; align-items: center; gap: 6px;
+    padding: 2px var(--card-pad) 8px;
+    font-size: 10px; letter-spacing: 0.04em; color: var(--color-fg-muted); flex: none;
 }
 .sortbar button {
-    background: transparent; border: 1px solid var(--color-border); border-radius: 4px;
-    color: var(--color-fg-muted); font: inherit; padding: 2px 7px; cursor: pointer;
+    background: transparent; border: 1px solid var(--color-border); border-radius: var(--radius-1);
+    color: var(--color-fg-muted); font: inherit; letter-spacing: 0; padding: 3px 8px; cursor: pointer;
+    transition: color var(--t-fast), border-color var(--t-fast);
 }
-.sortbar button.is-active { border-color: var(--color-primary); color: var(--color-primary); }
+.sortbar button:hover { color: var(--color-fg); border-color: var(--color-border-strong); }
+.sortbar button.is-active {
+    border-color: var(--color-primary); color: var(--color-primary);
+    background: var(--color-primary-soft); font-weight: 600;
+}
 
-/* 날씨 — 카드 그리드 대신 스크롤 가능한 단일 열 리스트(D5) */
-.weather-grid { display: flex; flex-direction: column; gap: 5px; }
+/* 날씨 — 2열 카드 4페이지 대신 스크롤 가능한 단일 열 목록(D5).
+   컬럼을 grid로 고정해 31줄의 기온이 세로로 정렬된다 — flex 로 두면 도시 이름
+   길이에 따라 숫자가 밀려서 "어디가 더운가"를 눈으로 훑을 수 없다. */
+.weather-grid { display: flex; flex-direction: column; gap: 4px; }
 .weather-row {
-    display: flex; align-items: center; gap: 10px;
+    display: grid;
+    grid-template-columns: 4px 52px 62px minmax(0, 1fr) auto;
+    align-items: center; gap: var(--space-3);
     border: 1px solid var(--color-border); border-radius: var(--radius-1);
-    padding: 6px 10px; background: var(--color-bg-elev); font-size: var(--fs-xs);
+    padding: 6px 10px 6px 6px; background: var(--color-bg-elev);
 }
-.weather-row__name { font-weight: 600; font-size: var(--fs-sm); color: var(--color-fg); width: 48px; flex: none; }
+/* 지도 코로플레스와 같은 기온 밴드 색(helpers.tempBandColor) — 두 영역이 한 언어를 쓴다 */
+/* 밴드 색은 10~15°C(#e0f3f8)처럼 아주 옅은 값이 있어서, 흰 카드 위에선 테두리가
+   없으면 칠해진 건지 빈 건지 분간이 안 된다 — 링을 하나 둘러 항상 '칠해진 것'으로 읽히게 한다. */
+.weather-row__band {
+    width: 4px; height: 24px; border-radius: 2px; background: var(--color-border);
+    box-shadow: inset 0 0 0 1px rgba(26, 31, 54, 0.14);
+}
+[data-theme="dark"] .weather-row__band { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35); }
+.weather-row__name { font-weight: 600; font-size: var(--fs-sm); color: var(--color-fg); }
 .weather-row__temp {
-    font-family: var(--font-mono); font-weight: 700; font-size: 15px; color: var(--color-fg);
-    width: 48px; flex: none; text-align: right;
+    font-family: var(--font-mono); font-weight: 700; font-size: 16px; line-height: 1.1;
+    color: var(--color-fg); text-align: right; font-variant-numeric: tabular-nums;
 }
-.weather-row__desc { color: var(--color-fg-muted); width: 56px; flex: none; }
-.weather-row__meta { color: var(--color-fg-muted); font-family: var(--font-mono); font-size: 10.5px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.weather-row__fcst { color: var(--color-fg-muted); font-size: 10.5px; flex: none; text-align: right; white-space: nowrap; }
+.weather-row__meta {
+    font-size: 11px; color: var(--color-fg-muted); min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.weather-row__fcst {
+    font-size: 11px; color: var(--color-fg-muted); white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+@media (max-width: 1400px) {
+    .weather-row { grid-template-columns: 4px 48px 58px minmax(0, 1fr); }
+    .weather-row__fcst { display: none; }
 }

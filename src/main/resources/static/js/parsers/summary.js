@@ -39,10 +39,10 @@
     function freshnessState(key) {
         const seen = lastSeenAt[key];
         const cfg = FRESHNESS[key];
-        if (!seen) return { cls: 'summary-dot--warn', text: cfg.label + ' 대기 중' };
+        if (!seen) return { cls: 'summary-dot--warn', age: '대기' };
         const age = Date.now() - seen;
         const cls = age >= cfg.badMs ? 'summary-dot--bad' : age >= cfg.warnMs ? 'summary-dot--warn' : 'summary-dot--ok';
-        return { cls: cls, text: cfg.label + ' ' + ageLabel(age) };
+        return { cls: cls, age: ageLabel(age) };
     }
 
     function renderFreshnessChip() {
@@ -51,31 +51,49 @@
         const order = ['weather', 'air', 'traffic', 'news', 'emergency'];
         el.innerHTML = order.map(function (k) {
             const s = freshnessState(k);
-            return '<span><span class="summary-dot ' + s.cls + '"></span>' + s.text + '</span>';
+            const state = s.cls.replace('summary-dot--', '');
+            return '<span class="summary-src summary-src--' + state + '">' +
+                     '<span class="summary-dot ' + s.cls + '"></span>' +
+                     '<span class="summary-src__label">' + FRESHNESS[k].label + '</span>' +
+                     '<span class="summary-src__age">' + s.age + '</span>' +
+                   '</span>';
         }).join('');
     }
 
-    /* ===== 재난문자 집계 ===== */
-    let _emergencyCount1h = 0;
+    /* ===== 재난문자 집계 =====
+     * 창을 1시간으로 잡았더니 전국 기준으로도 대부분의 시간대에 0건이 떠서,
+     * 상시 "0건"만 보여주는 죽은 칩이 됐다. 6시간이면 교대 한 번 분량이라
+     * "내가 보기 전에 무슨 일이 있었나"에 답이 된다. */
+    const EMERGENCY_WINDOW_MS = 6 * 3600000;
+    let _emergencyCount = 0;
+    let _emergencyLevel = '';
     let _emergencyBreakdown = '-';
 
     function onEmergency(strJson) {
         markSeen('emergency');
         const root = H.unwrap(strJson, 'emergencyJson');
         const items = (root && Array.isArray(root.items)) ? root.items : [];
-        const cutoff = nowMs() - 3600000;
+        const cutoff = nowMs() - EMERGENCY_WINDOW_MS;
         const recent = items.filter(function (it) {
             const d = H.parseToDate(it.CRT_DT);
             return d && d.getTime() >= cutoff;
         });
-        _emergencyCount1h = recent.length;
+        _emergencyCount = recent.length;
         const counts = {};
         recent.forEach(function (it) {
             const k = it.EMRG_STEP_NM || '기타';
             counts[k] = (counts[k] || 0) + 1;
         });
         const top = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).slice(0, 3);
-        _emergencyBreakdown = top.length ? top.map(function (k) { return k + ' ' + counts[k]; }).join(' · ') : '최근 1시간 없음';
+        _emergencyBreakdown = top.length ? top.map(function (k) { return k + ' ' + counts[k]; }).join(' · ') : '최근 6시간 없음';
+        // 건수가 0보다 크다고 전부 빨갛게 하면 "코로나 예방접종 안내" 한 건에도 경보가 뜬다.
+        // 색은 건수가 아니라 가장 높은 단계가 정한다.
+        _emergencyLevel = '';
+        recent.forEach(function (it) {
+            const step = String(it.EMRG_STEP_NM || '');
+            if (step.indexOf('심각') >= 0 || step.indexOf('경계') >= 0) { _emergencyLevel = 'danger'; }
+            else if (step.indexOf('주의') >= 0 && _emergencyLevel !== 'danger') { _emergencyLevel = 'warning'; }
+        });
         renderChips();
     }
 
@@ -133,7 +151,7 @@
             if (c < minT) { minT = c; minCity = name; }
         });
         if (maxT > -Infinity) {
-            _tempRange = maxT.toFixed(1) + ' / ' + minT.toFixed(1);
+            _tempRange = maxT.toFixed(1) + ' / ' + minT.toFixed(1) + '°';
             _tempRangeSub = '최고 ' + maxCity + ' · 최저 ' + minCity;
         }
         renderChips();
@@ -144,14 +162,17 @@
         const el = document.getElementById(id);
         if (!el) return;
         el.className = 'summary-chip' + (cls ? ' ' + cls : '');
+        el.title = label + ' — ' + value + ' (' + sub + ')';
         el.innerHTML =
             '<span class="summary-chip__k">' + H.esc(label) + '</span>' +
-            '<span class="summary-chip__v">' + H.esc(value) + '</span>' +
-            '<span class="summary-chip__s">' + H.esc(sub) + '</span>';
+            '<span class="summary-chip__line">' +
+              '<span class="summary-chip__v">' + H.esc(value) + '</span>' +
+              '<span class="summary-chip__s">' + H.esc(sub) + '</span>' +
+            '</span>';
     }
 
     function renderChips() {
-        chip('sumEmergency', _emergencyCount1h > 0 ? 'summary-chip--danger' : '', '재난문자 · 1h', _emergencyCount1h + '건', _emergencyBreakdown);
+        chip('sumEmergency', _emergencyLevel ? 'summary-chip--' + _emergencyLevel : '', '재난문자 · 6시간', _emergencyCount + '건', _emergencyBreakdown);
         chip('sumAir', _airBadCount > 0 ? 'summary-chip--warning' : 'summary-chip--ok', '대기질 나쁨 이상', _airBadCount + '개 시도', _airBadNames);
         chip('sumTraffic', '', '교통 돌발', _trafficCount + '건', _trafficBreakdown);
         chip('sumTemp', '', '기온 폭', _tempRange, _tempRangeSub);

@@ -17,53 +17,49 @@
         return (w && (w.description || w.main)) || '-';
     }
 
-    function skyLabel(sky, pty) {
-        const p = Number(pty);
-        if (p === 1) return '비';
-        if (p === 2) return '비/눈';
-        if (p === 3) return '눈';
-        if (p === 4) return '소나기';
-        switch (Number(sky)) {
-            case 1: return '맑음';
-            case 3: return '구름많음';
-            case 4: return '흐림';
-            default: return '-';
-        }
-    }
 
-    // D6: tmn/tmx 가 둘 다 없으면(저녁 시간대 정상 동작) "-/-°" 대신 강수확률+체감온도를 보여준다.
-    function fcstStrip(fcstStr, feelsC) {
-        if (!fcstStr) return '';
+    /**
+     * D6: tmn/tmx 는 기상청 단기예보 특성상 02시·11시 발표분에만 실려서 저녁엔 비는 게
+     * 정상이다. 예전엔 그걸 "-/-°" 로 그려 31줄이 전부 빈 칸이었고, 고친 뒤에도
+     * "오늘 체감21°·맑음 강수0% · 내일 16/26°·구름많음 20%" 처럼 한 줄에 사실 여섯 개를
+     * 욱여넣어 읽히지 않았다. 목록의 보조 컬럼은 **한 가지만** 말한다.
+     */
+    function shortFcst(fcstStr, feelsC) {
         const f = H.safeParse(fcstStr);
-        if (!f) return '';
-        const t = f.today || {};
-        const m = f.tomorrow || {};
-        const seg = function (label, b) {
-            const hasRange = b.tmn != null || b.tmx != null;
-            if (hasRange) {
-                const range = ((b.tmn != null ? b.tmn : '-') + '/' + (b.tmx != null ? b.tmx : '-')) + '°';
-                return label + ' ' + range + '·' + skyLabel(b.sky, b.pty) + (b.pop != null ? ' ' + b.pop + '%' : '');
-            }
-            const feels = feelsC != null && isFinite(feelsC) ? '체감' + feelsC.toFixed(0) + '°·' : '';
-            return label + ' ' + feels + skyLabel(b.sky, b.pty) + (b.pop != null ? ' 강수' + b.pop + '%' : '');
-        };
-        return seg('오늘', t) + ' · ' + seg('내일', m);
+        if (f) {
+            const t = f.today || {}, m = f.tomorrow || {};
+            if (m.tmn != null && m.tmx != null) return '내일 ' + m.tmn + '/' + m.tmx + '°';
+            if (t.tmn != null && t.tmx != null) return '오늘 ' + t.tmn + '/' + t.tmx + '°';
+            const pop = m.pop != null ? m.pop : t.pop;
+            if (pop != null && Number(pop) > 0) return '강수 ' + pop + '%';
+        }
+        if (feelsC != null && isFinite(feelsC)) return '체감 ' + feelsC.toFixed(0) + '°';
+        return '';
     }
 
     function row(payload) {
         const name = payload.cityName || payload.name || '-';
         const main = payload.main || {};
-        const desc = describe(payload.weather);
+        const tempC = main.temp != null ? Number(main.temp) - 273.15 : null;
         const feelsC = main.feels_like != null ? Number(main.feels_like) - 273.15 : null;
-        const humidity = main.humidity != null ? main.humidity + '%' : '-';
-        const wind = payload.wind && payload.wind.speed != null ? payload.wind.speed + 'm/s' : '-';
-        const fcst = fcstStrip(payload.fcst, feelsC);
+        // 지도 코로플레스와 같은 밴드 색 — "지도에서 붉은 곳 = 목록에서 붉은 줄"
+        const band = H.tempBandColor(tempC) || 'transparent';
+        const sky = H.wxKo(payload.weather && payload.weather[0] && payload.weather[0].main,
+                           describe(payload.weather));
+        const meta = [
+            sky,
+            main.humidity != null ? '습도 ' + main.humidity + '%' : null,
+            // OWM 풍속은 2.06 / 1.03 처럼 자릿수가 제각각이라 목록에서 열이 지저분해진다
+            (payload.wind && payload.wind.speed != null) ? '바람 ' + Number(payload.wind.speed).toFixed(1) + 'm/s' : null
+        ].filter(Boolean).join(' · ');
+        const fcst = shortFcst(payload.fcst, feelsC);
+
         return '<div class="weather-row">' +
+                 '<span class="weather-row__band" style="background:' + band + '"></span>' +
                  '<span class="weather-row__name">' + H.esc(name) + '</span>' +
                  '<span class="weather-row__temp">' + H.kToC(main.temp) + '°</span>' +
-                 '<span class="weather-row__desc">' + H.esc(desc) + '</span>' +
-                 '<span class="weather-row__meta">습도 ' + humidity + ' · 바람 ' + wind + '</span>' +
-                 (fcst ? '<span class="weather-row__fcst">' + H.esc(fcst) + '</span>' : '') +
+                 '<span class="weather-row__meta">' + H.esc(meta) + '</span>' +
+                 '<span class="weather-row__fcst">' + H.esc(fcst) + '</span>' +
                '</div>';
     }
 
